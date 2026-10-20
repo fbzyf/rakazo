@@ -11,7 +11,8 @@ import {
   FieldLabel,
   NativeSelect,
   NativeSelectOption,
-  Toggle,
+  ToggleGroup,
+  ToggleGroupItem,
 } from "@rakazo/ui-web";
 import { XIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -37,20 +38,25 @@ function ScopePicker({
   return (
     <div className="text-[13.5px] text-muted-foreground">
       <Trans>Default scope</Trans>
-      <div className="mt-2 flex gap-2">
+      <ToggleGroup
+        value={[value]}
+        onValueChange={([next]) => {
+          if (next) onChange(next as "isolated" | "shared");
+        }}
+        disabled={disabled}
+        variant="outline"
+        className="mt-2 w-full"
+      >
         {(["isolated", "shared"] as const).map((option) => (
-          <Toggle
+          <ToggleGroupItem
             key={option}
-            variant="outline"
-            pressed={value === option}
-            disabled={disabled}
-            onPressedChange={() => onChange(option)}
+            value={option}
             className="flex-1 font-normal text-muted-foreground aria-pressed:text-foreground"
           >
             {option === "isolated" ? <Trans>Isolated</Trans> : <Trans>Shared</Trans>}
-          </Toggle>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }

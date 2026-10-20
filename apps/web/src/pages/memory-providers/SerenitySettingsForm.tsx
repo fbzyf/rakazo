@@ -1,5 +1,13 @@
 import { Trans } from "@lingui/react/macro";
-import { Button, Field, FieldError, FieldLabel, Input, Toggle } from "@rakazo/ui-web";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@rakazo/ui-web";
 import { useId, useState } from "react";
 import type { MemoryProviderSettingsFormProps } from "./registry";
 import type { SerenityEndpointFieldError } from "./serenity-settings";
@@ -85,26 +93,28 @@ export function SerenitySettingsForm({ busy, onConnect }: MemoryProviderSettings
 
       <div className="mt-4 text-[13.5px] text-muted-foreground">
         <Trans>Allow writing</Trans>
-        <div className="mt-2 flex gap-2">
-          <Toggle
-            variant="outline"
-            pressed={!allowWrites}
-            disabled={busy}
-            onPressedChange={() => setAllowWrites(false)}
+        <ToggleGroup
+          value={[allowWrites ? "write" : "recall"]}
+          onValueChange={([next]) => {
+            if (next) setAllowWrites(next === "write");
+          }}
+          disabled={busy}
+          variant="outline"
+          className="mt-2 w-full"
+        >
+          <ToggleGroupItem
+            value="recall"
             className="flex-1 font-normal text-muted-foreground aria-pressed:text-foreground"
           >
             <Trans>Recall only</Trans>
-          </Toggle>
-          <Toggle
-            variant="outline"
-            pressed={allowWrites}
-            disabled={busy}
-            onPressedChange={() => setAllowWrites(true)}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="write"
             className="flex-1 font-normal text-muted-foreground aria-pressed:text-foreground"
           >
             <Trans>Recall and write</Trans>
-          </Toggle>
-        </div>
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <Button
