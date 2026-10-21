@@ -20,6 +20,21 @@ describe("attachment contracts", () => {
     expect(isAttachmentAudioMimeType("audio/flac")).toBe(false);
     expect(isAttachmentAudioMimeType("video/mp4")).toBe(false);
   });
+  it.each([
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+  ])("allows %s spreadsheet attachments", (mimeType) => {
+    expect(isAllowedAttachmentMimeType(mimeType)).toBe(true);
+    expect(
+      MessageBlock.parse({
+        kind: "file",
+        artifactId: "sheet-1",
+        mimeType,
+        name: "orders",
+        size: 42,
+      }),
+    ).toMatchObject({ kind: "file", mimeType });
+  });
   it("requires text or attachments for threads.send", () => {
     expect(validateThreadsSendInput({ text: "hello" })).toBe(true);
     expect(validateThreadsSendInput({ artifactIds: ["art_1"] })).toBe(true);
