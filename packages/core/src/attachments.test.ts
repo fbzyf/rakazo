@@ -116,6 +116,22 @@ describe("attachment helpers", () => {
     expect(inferAttachmentMimeType("notes.md", "")).toBe("text/markdown");
     expect(inferAttachmentMimeType("notes.markdown", "text/plain")).toBe("text/markdown");
     expect(inferAttachmentMimeType("notes.md", "application/pdf")).toBe("application/pdf");
+    expect(inferAttachmentMimeType("orders.xlsx", "")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    expect(inferAttachmentMimeType("orders.xls", "")).toBe("application/vnd.ms-excel");
+  });
+
+  it.each([
+    ["xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+    ["xls", "application/vnd.ms-excel"],
+  ])("infers and round-trips %s spreadsheet", (extension, mimeType) => {
+    for (const reported of [undefined, "", mimeType, "application/octet-stream"]) {
+      expect(inferAttachmentMimeType(`orders.${extension}`, reported)).toBe(mimeType);
+      expect(inferAttachmentMimeType(`ORDERS.${extension.toUpperCase()}`, reported)).toBe(mimeType);
+    }
+    expect(attachmentExtensionForMimeType(mimeType)).toBe(`.${extension}`);
+    expect(() => validateAttachmentMimeType(mimeType)).not.toThrow();
   });
 
   it.each([
