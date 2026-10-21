@@ -28,6 +28,8 @@ import { bearer, organization } from "better-auth/plugins";
 import { accountSecurity, oidcProofKey, sessionForAuthHook } from "./account-security.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
+import type { TokenKey } from "./token-storage.js";
+import { encryptStoredOAuthTokens, sealIdToken } from "./token-storage.js";
 
 export type { OidcConfig } from "./oidc.js";
 
@@ -251,6 +253,9 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
   if (env.passwordAuth === false && !env.oidc)
     throw new Error("Password auth requires OIDC when disabled");
   const discovery = env.oidc ? oidcDiscovery(env.oidc) : undefined;
+  // Better Auth's own token key, so every stored token shares one cipher and key.
+  let authContext: Promise<{ secretConfig: TokenKey }> | undefined;
+  const tokenKey = async () => (await authContext!).secretConfig;
   const auth = betterAuth({
     appName: "Rakazo",
     logger: env.logger,
@@ -259,6 +264,15 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     trustedOrigins: [...buildTrustedOrigins(env), "rakazo://"],
     account: {
       accountLinking: { enabled: true, disableImplicitLinking: true, trustedProviders: [] },
+      encryptOAuthTokens: true,
+    },
+    // Store only a hash of identifiers that carry an emailed token. Other
+    // identifiers hold no secret and stay readable.
+    verification: {
+      storeIdentifier: {
+        default: "plain",
+        overrides: { "reset-password:": "hashed", "delete-account-": "hashed" },
+      },
     },
     rateLimit: authRateLimitOptions(),
     database: prismaAdapter(prisma, { provider: "postgresql" }),
@@ -381,8 +395,13 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
           const session = await sessionForAuthHook(ctx);
           if (!session || isMessagingEmail(session.user.email)) throw new APIError("UNAUTHORIZED");
           const accounts = await ctx.context.internalAdapter.findAccounts(session.user.id);
+          const current = await Promise.all(
+            accounts.map((account) =>
+              isCurrentOidcAccount(account, env.oidc?.issuer, ctx.context.secretConfig),
+            ),
+          );
           const accountIds = accounts
-            .filter((account) => isCurrentOidcAccount(account, env.oidc?.issuer))
+            .filter((_, index) => current[index])
             .map((account) => account.accountId);
           if (!accountIds.length || ctx.body.idToken) throw new APIError("FORBIDDEN");
           await addOAuthServerContext({
@@ -492,6 +511,24 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       }),
     },
     databaseHooks: {
+      account: {
+        create: {
+          before: async (account) => ({
+            data: { ...account, idToken: await sealIdToken(await tokenKey(), account.idToken) },
+          }),
+        },
+        update: {
+          before: async (account) =>
+            account.idToken === undefined
+              ? undefined
+              : {
+                  data: {
+                    ...account,
+                    idToken: await sealIdToken(await tokenKey(), account.idToken),
+                  },
+                },
+        },
+      },
       session: {
         create: {
           before: async (session, ctx) => {
@@ -613,7 +650,10 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       },
     },
   });
+  authContext = auth.$context;
   return Object.assign(auth, {
+    /** Encrypts OAuth tokens stored before encryption was enabled. Safe to rerun. */
+    encryptStoredOAuthTokens: async () => encryptStoredOAuthTokens(prisma, await tokenKey()),
     ssoAvailability: () => discovery?.availability(),
     disposeOidcDiscovery: () => discovery?.dispose(),
   });

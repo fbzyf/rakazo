@@ -464,6 +464,9 @@ export async function createApp(
       );
     },
   });
+  const oauthTokenUpgrade = auth
+    .encryptStoredOAuthTokens()
+    .catch((error) => getLogger().error("oauth token encryption upgrade failed", error));
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection({
     CLOUD_AGENT_PROVIDER: env.cloudAgentProvider,
@@ -1037,6 +1040,7 @@ export async function createApp(
       await teamChatBridge?.stop();
       await email?.drain?.();
       await reconciler?.stop();
+      await oauthTokenUpgrade;
       await jobs.close();
       await secrets.close();
       await realtime.close();
