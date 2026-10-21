@@ -697,7 +697,7 @@ export async function createApp(
     if (matched) return c.newResponse(response.body, response);
     await next();
   });
-  mountVoiceHttpRoutes(app, { prisma, secrets }, async (c) => {
+  mountVoiceHttpRoutes(app, { prisma, secrets, env }, async (c) => {
     const actor = await sessionActor(c.req.raw);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     return actor;
@@ -837,6 +837,7 @@ export async function createApp(
               deploymentProvider: env.defaultProvider,
               deploymentModel: env.defaultModel,
               deploymentModelKey: env.deploymentModelKey,
+              allowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
               providerOverride: env.teamChatJudgeProvider,
               modelOverride: env.teamChatJudgeModel,
             })
@@ -847,6 +848,7 @@ export async function createApp(
               deploymentProvider: env.defaultProvider,
               deploymentModel: env.defaultModel,
               deploymentModelKey: env.deploymentModelKey,
+              allowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
             });
       const bridge = new TeamChatBridge({
         prisma,

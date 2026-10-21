@@ -59,7 +59,6 @@ import {
   computerUpdateView,
   createFaviconResolver,
   createTicket,
-  createVoiceProvider,
   defaultCatalogModelId,
   deletePushToken,
   deploymentAutoReviewDefault,
@@ -319,6 +318,7 @@ import {
   updateVoiceSpeechModel,
   voiceContext,
   voiceCredentialServer,
+  voiceProviderFor,
 } from "./voice.js";
 
 const MAX_COMPUTER_TEXT_FILE_BYTES = 2 * 1024 * 1024;
@@ -1329,6 +1329,7 @@ export function createRouter(deps: RouterDeps) {
           }
           plaintext = buildModelConnectPlaintext(input, previousPlaintext, {
             omitVisionModelIds,
+            allowPrivateEndpoint: mayUsePrivateEndpoint(context.actor, deps),
           });
         } catch (error) {
           throw new ORPCError("BAD_REQUEST", {
@@ -1410,6 +1411,7 @@ export function createRouter(deps: RouterDeps) {
               { ...input, apiKey },
               undefined,
               context.signal,
+              { allowPrivate: mayUsePrivateEndpoint(context.actor, deps) },
             );
             return { models };
           } catch (error) {
@@ -6402,7 +6404,7 @@ export function createRouter(deps: RouterDeps) {
             ? loaded
             : await loadVoiceCredential(deps, context.actor, providerId);
         if (!row) return [];
-        return createVoiceProvider(row.cred.provider).listVoices(
+        return (await voiceProviderFor(deps, context.actor, row.cred.provider)).listVoices(
           row.apiKey,
           voiceContext(context.actor, context.signal),
         );
