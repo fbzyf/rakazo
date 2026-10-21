@@ -273,6 +273,12 @@ import {
   threadRunError,
   userHoldsComputerControl,
 } from "../lib/thread-events";
+import {
+  botThreadSnapshotForPaint,
+  createThreadSnapshotCache,
+  peekThreadSnapshot,
+  putThreadSnapshot,
+} from "../lib/thread-snapshot-cache";
 import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activity-preference";
 import {
   isToolOnlyNarration,
@@ -603,6 +609,9 @@ function SpaceShell() {
   // every update keeps Map iteration order as least-recently-used first, so
   // eviction drops the bot that's been out of view longest.
   const COMPUTER_CACHE_LIMIT = 20;
+  // Last-seen private bot transcripts (N=8). Sidebar switch paints this first;
+  // threads.get reconciles in the background. See thread-snapshot-cache.ts.
+  const threadSnapshotCacheRef = useRef(createThreadSnapshotCache());
 
   function cacheComputerFor(
     botId: string,
@@ -620,6 +629,7 @@ function SpaceShell() {
 
   function commitSnapshot(next: ThreadSnapshot | null) {
     snapshotRef.current = next;
+    if (next) putThreadSnapshot(threadSnapshotCacheRef.current, next);
     setSnapshot(withLiveStreamingProgress(next, streamResponsesRef.current));
   }
 
@@ -1497,6 +1507,12 @@ function SpaceShell() {
     } else {
       setScreenUrl(null);
     }
+    // Paint the last-seen transcript before threads.get. Search jumps skip this
+    // so the around-page is not replaced by the latest page.
+    if (!pendingJump) {
+      const cachedThread = peekThreadSnapshot(threadSnapshotCacheRef.current, active.id);
+      if (cachedThread) commitSnapshot(cachedThread);
+    }
     expandedHistoryThread.current = null;
     historyEpoch.current += 1;
     const abort = new AbortController();
@@ -1505,12 +1521,21 @@ function SpaceShell() {
       loadInitial: async () => {
         const primed = bootstrappedThread.current;
         bootstrappedThread.current = null;
+        if (primed?.botId === active.id) return primed;
         // Pending search jumps load the around-page separately; avoid replacing it with latest.
-        return primed?.botId === active.id
-          ? primed
-          : pendingJump
-            ? rpc.threads.get({ botId: active.id }, { signal: threadSnapshotSignal(abort.signal) })
-            : refreshThread(active.id, threadSnapshotSignal(abort.signal));
+        if (pendingJump) {
+          return rpc.threads.get(
+            { botId: active.id },
+            { signal: threadSnapshotSignal(abort.signal) },
+          );
+        }
+        const cachedThread = peekThreadSnapshot(threadSnapshotCacheRef.current, active.id);
+        if (cachedThread) {
+          // Cache is already on screen; do not wait for threads.get before SSE.
+          void refreshThread(active.id, threadSnapshotSignal(abort.signal)).catch(() => undefined);
+          return cachedThread;
+        }
+        return refreshThread(active.id, threadSnapshotSignal(abort.signal));
       },
       loadHead: () =>
         rpc.threads.head({ botId: active.id }, { signal: threadSnapshotSignal(abort.signal) }),
@@ -2033,12 +2058,22 @@ function SpaceShell() {
       });
     }
   }, [active?.id, groupId, inGroup, routines, routinesBotId, searchParams, setSearchParams]);
+  // Switching bots: adopt the cached transcript during this render so the
+  // first frame is the last conversation, not an empty wait for threads.get.
+  // Search jumps keep the around-page path and skip the latest-page cache.
+  if (active && !inGroup && snapshot?.botId !== active.id && !searchParams.get("m")) {
+    const cachedThread = peekThreadSnapshot(threadSnapshotCacheRef.current, active.id);
+    if (cachedThread) {
+      snapshotRef.current = cachedThread;
+      setSnapshot(withLiveStreamingProgress(cachedThread, streamResponses));
+    }
+  }
   const activeSnapshot = inGroup
     ? snapshot?.groupId === groupId
       ? snapshot
       : null
-    : snapshot?.botId === active?.id
-      ? snapshot
+    : active
+      ? botThreadSnapshotForPaint(snapshot, active.id, threadSnapshotCacheRef.current)
       : null;
   // Keep the armed reply even when its parent leaves the loaded page: the
   // server resolves a paged-out target and degrades a deleted one to a plain
@@ -2212,7 +2247,7 @@ function SpaceShell() {
       markOnce("rk:renderer:bots-committed");
       markAfterPaint("rk:renderer:bots-painted");
     }
-    if (active && snapshot?.botId === active.id) {
+    if (active && botThreadSnapshotForPaint(snapshot, active.id, threadSnapshotCacheRef.current)) {
       markOnce("rk:renderer:thread-committed");
       markAfterPaint("rk:renderer:thread-painted");
     }
