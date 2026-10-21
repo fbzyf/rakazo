@@ -82,12 +82,15 @@ import {
   createBoardEvents,
   createDb,
   createPool,
+  createSecurityEventPruner,
   createThreadEvents,
   IsolationError,
+  installSecurityEventStore,
   parsePositiveInteger,
   provisionMessagingIdentity,
   pushSessionExpiresAt,
   requireMembership,
+  securityEventRetentionDays,
 } from "@rakazo/db";
 import type { Logger } from "@rakazo/logging";
 import {
@@ -104,6 +107,12 @@ import { cors } from "hono/cors";
 import { storeInboundAttachment } from "./artifacts.js";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import {
+  clientIpMiddleware,
+  createClientIpResolver,
+  requestClientIp,
+  withClientIp,
+} from "./client-ip.js";
 import { mountDiagramScript } from "./diagram-script.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
@@ -120,6 +129,7 @@ import { monitoringRoutes } from "./monitoring.js";
 import { mountApiRequestBodyLimits } from "./request-body-limit.js";
 import { createRouter } from "./router.js";
 import { mountScreenTarget } from "./screen-proxy.js";
+import { createAuthResponseAudit } from "./security-audit.js";
 import { isDeferredReservationLost, TeamChatBridge } from "./team-chat-bridge.js";
 import { ModelTeamChatEngagementJudge } from "./team-chat-judge.js";
 import {
@@ -207,6 +217,11 @@ export async function createApp(
         applicationName: "rakazo-api",
       });
   let { prisma } = created;
+  // Built before anything listens, so a bad TRUSTED_PROXIES entry stops startup.
+  const clientIp = createClientIpResolver({
+    trustedProxies: env.trustedProxies,
+    header: env.clientIpHeader,
+  });
   const realtime =
     realtimeOverride ??
     (created.pool
@@ -220,6 +235,7 @@ export async function createApp(
   if (secrets.describe().capabilities.degraded)
     logger.warn("Secret storage degraded; encrypted credentials remain available");
   prisma = withSecretPersistence(prisma, secrets);
+  installSecurityEventStore(prisma);
   const analytics = createProductAnalytics();
   const events = createThreadEvents(prisma, realtime, {
     analytics,
@@ -552,6 +568,10 @@ export async function createApp(
         notifications,
         reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
+        reconcileSecurityEventRetention: createSecurityEventPruner(
+          prisma,
+          securityEventRetentionDays(),
+        ),
       })
     : undefined;
   reconciler?.start();
@@ -613,6 +633,7 @@ export async function createApp(
   });
   const app = new Hono();
   app.use("*", requestLogging(logger));
+  app.use("*", clientIpMiddleware(clientIp, env.clientIpHeader));
   app.use(
     "*",
     cors({
@@ -655,12 +676,16 @@ export async function createApp(
   mountApiRequestBodyLimits(app, env.maxUploadSizeBytes);
   mountScreenTarget(app, prisma, env.screenProxySecret);
   mountDiagramScript(app);
+  const auditAuthResponse = createAuthResponseAudit();
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
     if (isBlockedAuthPath(path)) {
       return c.json({ error: "Not available in version 1" }, 404);
     }
-    return auth.handler(emptyAuthBodyAsJson(c.req.raw));
+    const ip = requestClientIp(c);
+    const response = await auth.handler(withClientIp(emptyAuthBodyAsJson(c.req.raw), ip));
+    await auditAuthResponse(path, ip, response);
+    return response;
   });
   mountLocalSettings(app, { token: env.desktopStackToken, prisma, rpc });
   const requestSession = async (request: Request) => {

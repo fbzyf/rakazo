@@ -12,7 +12,12 @@ import type {
 } from "@rakazo/adapter-kit";
 import { isCloudMetadataHost, isLocalMcpHost } from "@rakazo/contracts";
 import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
-import { isCloudMetadataAddress, isLinkLocalAddress, isPrivateAddress } from "./network-address.js";
+import {
+  egressRefused,
+  isCloudMetadataAddress,
+  isLinkLocalAddress,
+  isPrivateAddress,
+} from "./network-address.js";
 import { isPrivateRemoteMcpHostname } from "./remote-mcp.js";
 import { MemoryProviderDeploymentOwnerRequiredError } from "./serenity-memory-provider.js";
 import type { SupermemoryConnectionConfig } from "./supermemory-client.js";
@@ -87,7 +92,7 @@ async function pinSupermemoryPrivateHost(
   const host = hostnameOf(parseSupermemoryBaseUrl(baseUrl));
   if (isLocalMcpHost(host)) return undefined;
   if (options.allowPrivateEndpoint !== true) {
-    throw new MemoryProviderDeploymentOwnerRequiredError();
+    throw egressRefused(host, new MemoryProviderDeploymentOwnerRequiredError());
   }
   if (isIP(host) !== 0) return undefined;
   const resolve = options.resolveHostname ?? defaultResolveHostname;
