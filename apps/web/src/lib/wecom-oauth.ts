@@ -6,8 +6,11 @@ export const WECOM_OAUTH_START_PATH = "/api/auth/wecom";
 /** Server-owned callback; the client only survives the return / session cookie. */
 export const WECOM_OAUTH_CALLBACK_PATH = "/api/auth/callback/wecom";
 
-/** Unbound refusal. Query `reason=unbound` (or Auth `?error=unbound`). */
+/** API unbound page. Prefer 302 users to `WECOM_OAUTH_UNBOUND_RETURN` instead. */
 export const WECOM_OAUTH_UNBOUND_PATH = "/api/auth/wecom/unbound";
+
+/** Preferred user-visible unbound return. Auth shows 未绑定 for this query. */
+export const WECOM_OAUTH_UNBOUND_RETURN = "/sign-in?reason=unbound";
 
 export function startWeComOAuth(
   assign: (url: string) => void = (url) => {

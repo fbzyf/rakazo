@@ -428,6 +428,12 @@ it("shows unbound copy from reason=unbound and does not auto-start", async () =>
   expect(wecomOAuth.startWeComOAuth).not.toHaveBeenCalled();
 });
 
+it("shows unbound copy from error=unbound", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render("in", "?error=unbound");
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("未绑定");
+});
+
 it("shows denied copy from error=access_denied", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
   await render("in", "?error=access_denied");

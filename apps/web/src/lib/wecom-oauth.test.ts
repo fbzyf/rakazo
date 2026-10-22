@@ -7,6 +7,7 @@ import {
   WECOM_OAUTH_CALLBACK_PATH,
   WECOM_OAUTH_START_PATH,
   WECOM_OAUTH_UNBOUND_PATH,
+  WECOM_OAUTH_UNBOUND_RETURN,
   wecomReturnIssue,
 } from "./wecom-oauth";
 
@@ -18,6 +19,7 @@ it("locks Ben's WeCom OAuth paths", () => {
   expect(WECOM_OAUTH_START_PATH).toBe("/api/auth/wecom");
   expect(WECOM_OAUTH_CALLBACK_PATH).toBe("/api/auth/callback/wecom");
   expect(WECOM_OAUTH_UNBOUND_PATH).toBe("/api/auth/wecom/unbound");
+  expect(WECOM_OAUTH_UNBOUND_RETURN).toBe("/sign-in?reason=unbound");
 });
 
 it("starts OAuth with a same-origin assign to the locked start path", () => {
