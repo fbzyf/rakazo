@@ -174,6 +174,7 @@ describe("WeCom OAuth skeleton", () => {
     );
     expect(location.searchParams.get("appid")).toBe("test-corp-id");
     expect(location.searchParams.get("agentid")).toBe("1000082");
+    expect(location.searchParams.get("scope")).toBe("snsapi_base");
     expect(location.searchParams.get("redirect_uri")).toBe(`${origin}/api/auth/callback/wecom`);
     expect(location.searchParams.get("state")).toMatch(/^[0-9a-f]{32}$/);
     expect(location.hash).toBe("#wechat_redirect");
@@ -298,24 +299,108 @@ describe("WeCom env", () => {
 });
 
 describe("WeCom token exchange", () => {
-  it("reads userid from the official token API without using createUser", async () => {
+  const corp = { corpId: "test-corp-id", secret: "test-wecom-secret" };
+  const liveCode = "live-code";
+  const accessToken = "fake-access-token";
+
+  function wecomUrl(input: string | URL | Request) {
+    return new URL(input instanceof Request ? input.url : String(input));
+  }
+
+  function tokenOk(input: string | URL | Request, errcode: unknown = 0) {
+    const url = wecomUrl(input);
+    expect(url.pathname).toBe("/cgi-bin/gettoken");
+    expect(url.searchParams.get("corpid")).toBe(corp.corpId);
+    expect(url.searchParams.get("corpsecret")).toBe(corp.secret);
+    return Response.json({ access_token: accessToken, errcode });
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.mocked(console.warn).mockRestore();
+  });
+
+  it("reads userid from the official auth/getuserinfo API", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.pathname.endsWith("/gettoken")) {
-        expect(url.searchParams.get("corpid")).toBe("test-corp-id");
-        return Response.json({ access_token: "fake-access-token", errcode: 0 });
-      }
-      if (url.pathname.endsWith("/getuserinfo")) {
-        return Response.json({ userid: boundUserid, errcode: 0 });
-      }
-      throw new Error("unexpected WeCom URL");
+      const url = wecomUrl(input);
+      if (url.pathname.endsWith("/gettoken")) return tokenOk(input);
+      expect(url.href.split("?")[0]).toBe("https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo");
+      expect(url.searchParams.get("access_token")).toBe(accessToken);
+      expect(url.searchParams.get("code")).toBe(liveCode);
+      return Response.json({ userid: boundUserid, errcode: 0, errmsg: "ok" });
     });
-    await expect(
-      exchangeWecomAuthorizationCode(
-        { corpId: "test-corp-id", secret: "test-wecom-secret" },
-        "live-code",
-        fetchImpl,
-      ),
-    ).resolves.toEqual({ userid: boundUserid });
+    await expect(exchangeWecomAuthorizationCode(corp, liveCode, fetchImpl)).resolves.toEqual({
+      userid: boundUserid,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("treats errcode 0 and UserId as success for 自建应用网页授权", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = wecomUrl(input);
+      if (url.pathname.endsWith("/gettoken")) return tokenOk(input, "0");
+      expect(url.pathname).toBe("/cgi-bin/auth/getuserinfo");
+      return Response.json({ UserId: boundUserid, errcode: "0", errmsg: "ok" });
+    });
+    await expect(exchangeWecomAuthorizationCode(corp, liveCode, fetchImpl)).resolves.toEqual({
+      userid: boundUserid,
+    });
+  });
+
+  it("falls back to classic user/getuserinfo when the official path has no userid", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = wecomUrl(input);
+      if (url.pathname.endsWith("/gettoken")) return tokenOk(input);
+      if (url.pathname === "/cgi-bin/auth/getuserinfo") {
+        return Response.json({ errcode: 48001, errmsg: "api unauthorized" });
+      }
+      expect(url.pathname).toBe("/cgi-bin/user/getuserinfo");
+      expect(url.searchParams.get("code")).toBe(liveCode);
+      return Response.json({ UserId: boundUserid, errcode: 0, errmsg: "ok" });
+    });
+    await expect(exchangeWecomAuthorizationCode(corp, liveCode, fetchImpl)).resolves.toEqual({
+      userid: boundUserid,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("logs gettoken errcode/errmsg without secret, token, or code", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      expect(wecomUrl(input).pathname).toBe("/cgi-bin/gettoken");
+      return Response.json({ errcode: 40001, errmsg: "invalid credential" });
+    });
+    await expect(exchangeWecomAuthorizationCode(corp, liveCode, fetchImpl)).resolves.toBeNull();
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    const line = String(vi.mocked(console.warn).mock.calls[0]?.[0]);
+    expect(line).toContain("step=gettoken");
+    expect(line).toContain("errcode=40001");
+    expect(line).toContain("errmsg=invalid credential");
+    expect(line).not.toContain(corp.secret);
+    expect(line).not.toContain(accessToken);
+    expect(line).not.toContain(liveCode);
+  });
+
+  it("logs getuserinfo errcode/errmsg and does not retry after invalid code", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = wecomUrl(input);
+      if (url.pathname.endsWith("/gettoken")) return tokenOk(input);
+      expect(url.pathname).toBe("/cgi-bin/auth/getuserinfo");
+      return Response.json({ errcode: 40029, errmsg: "invalid code" });
+    });
+    await expect(exchangeWecomAuthorizationCode(corp, liveCode, fetchImpl)).resolves.toBeNull();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    const line = String(vi.mocked(console.warn).mock.calls[0]?.[0]);
+    expect(line).toContain("step=getuserinfo");
+    expect(line).toContain("errcode=40029");
+    expect(line).toContain("errmsg=invalid code");
+    expect(line).not.toContain(corp.secret);
+    expect(line).not.toContain(accessToken);
+    expect(line).not.toContain(liveCode);
   });
 });
