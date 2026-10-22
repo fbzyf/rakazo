@@ -205,7 +205,7 @@ describe("WeCom OAuth skeleton", () => {
     cookies = "";
     const response = await callback("bound-code", oauthState, true);
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe(`${origin}/`);
+    expect(response.headers.get("location")).toBe(`${origin}/app`);
     expect(response.headers.getSetCookie().join("\n")).toMatch(/better-auth\.session_token=/);
     const jar = new Map(
       response.headers
@@ -230,9 +230,7 @@ describe("WeCom OAuth skeleton", () => {
     cookies = "";
     const response = await callback("unbound-code", oauthState);
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe(
-      `${origin}/api/auth/wecom/unbound?reason=unbound`,
-    );
+    expect(response.headers.get("location")).toBe(`${origin}/sign-in?reason=unbound`);
     expect(response.headers.getSetCookie().join("\n")).not.toMatch(
       /(?:^|, )(?:__Secure-)?better-auth\.session_token=/,
     );
@@ -243,6 +241,7 @@ describe("WeCom OAuth skeleton", () => {
     const unbound = await request("/wecom/unbound?reason=unbound");
     expect(unbound.status).toBe(403);
     expect(await unbound.text()).toContain("Unbound");
+    expect(unbound.headers.get("content-type")).toMatch(/text\/html/);
   });
 
   it("keeps email/password sign-in working beside WeCom routes", async () => {
