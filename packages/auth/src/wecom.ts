@@ -115,9 +115,8 @@ function notConfigured(): never {
   });
 }
 
-function unboundLocation(requestUrl: string): string {
-  const url = new URL("/api/auth/wecom/unbound", requestUrl);
-  url.search = "";
+function signInUnboundLocation(webOrigin: string): string {
+  const url = new URL("/sign-in", webOrigin);
   url.searchParams.set("reason", "unbound");
   return url.href;
 }
@@ -186,13 +185,13 @@ export function wecomAuth(
             ? await ctx.context.internalAdapter.findUserById(binding.userId)
             : null;
           // Bound whitelist only. Never createUser / sign-up from this path.
-          if (!user) throw ctx.redirect(unboundLocation(request.url));
+          if (!user) throw ctx.redirect(signInUnboundLocation(env.webOrigin));
           const session = await ctx.context.internalAdapter.createSession(user.id);
           if (!session) {
             throw new APIError("INTERNAL_SERVER_ERROR", { code: "WECOM_SESSION_FAILED" });
           }
           await setSessionCookie(ctx, { session, user });
-          throw ctx.redirect(new URL("/", env.webOrigin).href);
+          throw ctx.redirect(new URL("/app", env.webOrigin).href);
         },
       ),
       wecomUnbound: createAuthEndpoint(WECOM_UNBOUND_PATH, { method: "GET" }, async (ctx) => {

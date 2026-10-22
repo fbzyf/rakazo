@@ -642,17 +642,18 @@ export async function createApp(
     });
   }
   app.get("/api/auth/capabilities", (c) => {
-    return c.json({
-      sso: env.oidc
-        ? { name: env.oidc.name, availability: auth.ssoAvailability() ?? "checking" }
-        : null,
-      passwordAuth: env.passwordAuth !== false,
-      passwordReset: env.passwordAuth !== false && Boolean(email),
-      resetUrl:
-        env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
-      emailCode: auth.emailCodeSignIn,
-      billing: Boolean(billing),
-    } satisfies AuthCapabilities);
+    return c.json(
+      publicAuthCapabilities({
+        oidc: env.oidc,
+        ssoAvailability: auth.ssoAvailability(),
+        passwordAuth: env.passwordAuth,
+        hasEmail: Boolean(email),
+        emailCode: auth.emailCodeSignIn,
+        billing: Boolean(billing),
+        wecom: Boolean(env.wecom),
+        webOrigin: env.webOrigin,
+      }),
+    );
   });
   if (localEmailEmulator && env.nodeEnv === "development") {
     app.get(
@@ -1062,6 +1063,32 @@ export async function createApp(
       await analytics?.flush();
       await logger.flush({ timeoutMs: 2_000 });
     },
+  };
+}
+
+/** Public `/api/auth/capabilities` body. `wecom` is extra until the web contract lands. */
+export function publicAuthCapabilities(input: {
+  oidc?: { name: string };
+  ssoAvailability?: "available" | "unavailable" | "checking";
+  passwordAuth?: boolean;
+  hasEmail: boolean;
+  emailCode: boolean;
+  billing: boolean;
+  wecom: boolean;
+  webOrigin: string;
+}): AuthCapabilities & { wecom: boolean } {
+  const passwordAuth = input.passwordAuth !== false;
+  return {
+    sso: input.oidc
+      ? { name: input.oidc.name, availability: input.ssoAvailability ?? "checking" }
+      : null,
+    passwordAuth,
+    passwordReset: passwordAuth && input.hasEmail,
+    resetUrl:
+      passwordAuth && input.hasEmail ? new URL("/reset-password", input.webOrigin).href : null,
+    emailCode: input.emailCode,
+    billing: input.billing,
+    wecom: input.wecom,
   };
 }
 
