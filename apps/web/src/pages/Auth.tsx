@@ -16,6 +16,12 @@ import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { clearSpaceSelection } from "../lib/rpc";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
+import {
+  canAutoStartWeComOAuth,
+  isWeComWorkbench,
+  startWeComOAuth,
+  wecomReturnIssue,
+} from "../lib/wecom-oauth";
 import { commitWeComSession, isWeComWebView } from "../lib/wecom-webview";
 import { WindowChrome } from "./WindowChrome";
 
@@ -35,12 +41,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [warnedEmail, setWarnedEmail] = useState<string | null>(null);
   const emailSuggestion = mode === "up" ? suggestEmailCorrection(email) : null;
   const [error, setError] = useState<string | null>(() => {
-    const code = searchParams.get("error");
+    const code = wecomReturnIssue(searchParams);
     if (!code) return null;
     return authErrorText({ code }, t`Could not continue`);
   });
   const [pending, setPending] = useState(false);
   const entering = useRef(false);
+  const [wecomPending, setWecomPending] = useState(false);
+  const wecomAutoStarted = useRef(false);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -85,9 +93,36 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     };
   }, [mode, capabilityAttempt]);
 
+  useEffect(() => {
+    if (wecomAutoStarted.current || !reset) return;
+    if (
+      !canAutoStartWeComOAuth({
+        wecomEnabled: Boolean(reset.wecom),
+        inWeCom: isWeComWorkbench(),
+        mode,
+        returnIssue: wecomReturnIssue(searchParams),
+      })
+    ) {
+      return;
+    }
+    wecomAutoStarted.current = true;
+    beginWeComOAuth();
+  }, [mode, reset, searchParams]);
+
+  function beginWeComOAuth() {
+    setError(null);
+    setWecomPending(true);
+    try {
+      startWeComOAuth();
+    } catch {
+      setWecomPending(false);
+      setError(t`Could not continue`);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reset?.passwordAuth) return;
+    if (!reset?.passwordAuth || wecomPending) return;
     if (codeStep) {
       // An unfinished code would spend one of the code's three attempts.
       if (code.length === CODE_LENGTH) await verifyCode(code);
@@ -265,12 +300,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           {reset?.sso && !reset.passwordAuth && mode !== "forgot" ? (
             <Button
               type="button"
-              disabled={pending}
+              disabled={pending || wecomPending}
               className={submitClass}
               onClick={() => void signInWithSso()}
             >
               <Trans>Continue with {reset.sso.name}</Trans>
             </Button>
+          ) : null}
+          {reset && !reset.passwordAuth && mode !== "forgot" && !sent ? (
+            <WeComLoginButton
+              pending={wecomPending}
+              disabled={pending || wecomPending}
+              variant={reset.sso ? "outline" : "default"}
+              onClick={beginWeComOAuth}
+            />
           ) : null}
           {error && !reset?.passwordAuth ? (
             <p role="alert" className="mt-3 text-sm text-destructive">
@@ -391,7 +434,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               <Button
                 type="submit"
                 size="lg"
-                disabled={pending || (codeStep && code.length < CODE_LENGTH)}
+                disabled={pending || wecomPending || (codeStep && code.length < CODE_LENGTH)}
                 className={submitClass}
               >
                 {pending ? (
@@ -408,10 +451,18 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               </Button>
               {mode === "in" && !codeStep ? (
                 <PasskeySignIn
-                  disabled={pending}
+                  disabled={pending || wecomPending}
                   className={submitClass}
                   onSignedIn={enterApp}
                   onError={setError}
+                />
+              ) : null}
+              {reset && mode !== "forgot" && !codeStep ? (
+                <WeComLoginButton
+                  pending={wecomPending}
+                  disabled={pending || wecomPending}
+                  variant="outline"
+                  onClick={beginWeComOAuth}
                 />
               ) : null}
               {codeStep ? (
@@ -419,7 +470,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   type="button"
                   variant="link"
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || wecomPending}
                   className="mt-3 text-muted-foreground"
                   onClick={leaveCodeStep}
                 >
@@ -431,7 +482,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   type="button"
                   variant="link"
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || wecomPending}
                   className="mt-3 text-muted-foreground"
                   onClick={() => void signInWithSso()}
                 >
@@ -582,6 +633,30 @@ export function AuthFrame({
         </form>
       </div>
     </div>
+  );
+}
+
+function WeComLoginButton({
+  pending,
+  disabled,
+  onClick,
+  variant = "default",
+}: {
+  pending: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  variant?: "default" | "outline";
+}) {
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      disabled={disabled}
+      className={submitClass}
+      onClick={onClick}
+    >
+      {pending ? <Trans>Working…</Trans> : <Trans>企微登录</Trans>}
+    </Button>
   );
 }
 
