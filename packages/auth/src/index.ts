@@ -31,8 +31,18 @@ import { accountSecurity, oidcProofKey, sessionForAuthHook } from "./account-sec
 import { breachedPasswordCheck } from "./breached-password.js";
 import type { OidcConfig } from "./oidc.js";
 import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
+import type { WecomConfig } from "./wecom.js";
+import { wecomAuth } from "./wecom.js";
 
 export type { OidcConfig } from "./oidc.js";
+export type { WecomConfig } from "./wecom.js";
+export {
+  exchangeWecomAuthorizationCode,
+  rewriteWecomCallbackRequest,
+  WECOM_DEFAULT_AGENT_ID,
+  wecomAuthorizeUrl,
+  wecomConfigFromEnv,
+} from "./wecom.js";
 
 export interface AuthEnv {
   analytics?: ProductAnalytics;
@@ -40,6 +50,7 @@ export interface AuthEnv {
   /** Opt-in: rejects new passwords found in Have I Been Pwned. Calls an outside service. */
   breachedPasswordCheck?: boolean;
   oidc?: OidcConfig;
+  wecom?: WecomConfig;
   secret: string;
   baseURL: string;
   webOrigin: string;
@@ -396,6 +407,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
       bearer(),
       expo(),
       accountSecurity(env.email, env.oidc?.name, env.oidc?.issuer, env.passwordAuth !== false),
+      wecomAuth(prisma, env),
       ...(discovery ? [discovery.plugin] : []),
       ...(emailCodeSignIn
         ? [
