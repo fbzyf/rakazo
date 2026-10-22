@@ -15,6 +15,35 @@ body,
   font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* WeCom workbench WebView only — do not promote the whole app to a phone layout. */
+html[data-wecom] {
+  overflow-x: clip;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+html[data-wecom],
+html[data-wecom] body,
+html[data-wecom] #root {
+  min-height: 100%;
+  max-height: 100%;
+}
+@supports (height: 100dvh) {
+  html[data-wecom],
+  html[data-wecom] body,
+  html[data-wecom] #root {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+}
+html[data-wecom] #root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
 /* Switching spaces in place (lib/space-switch.ts): the sidebar holds still while the
    conversation crossfades, instead of the whole screen redrawing. */
 .rk-space-switching [data-space-switch="sidebar"] {

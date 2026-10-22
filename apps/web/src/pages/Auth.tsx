@@ -14,6 +14,7 @@ import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { clearSpaceSelection } from "../lib/rpc";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
+import { commitWeComSession, isWeComWebView } from "../lib/wecom-webview";
 
 type AuthMode = "in" | "up" | "forgot";
 
@@ -178,13 +179,17 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   function enterApp() {
     clearSpaceSelection();
-    navigate(
+    const next =
       mode === "up"
         ? "/onboarding"
         : searchParams.get("next") === "/integrations/setup"
           ? "/integrations/setup"
-          : "/app",
-    );
+          : "/app";
+    if (isWeComWebView()) {
+      commitWeComSession(next);
+      return;
+    }
+    navigate(next);
   }
 
   function chooseMethod(next: "code" | "password") {
@@ -524,7 +529,7 @@ export function AuthFrame({
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
-      <form onSubmit={onSubmit} className="flex w-[460px] flex-col items-center">
+      <form onSubmit={onSubmit} className="flex w-full max-w-[460px] flex-col items-center">
         <div className="flex h-[74px] w-[74px] items-center justify-center gap-[11px] rounded-full bg-muted">
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />

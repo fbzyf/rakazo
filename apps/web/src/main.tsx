@@ -10,6 +10,7 @@ import { markAfterPaint, markOnce } from "./lib/performance";
 import { installPreloadRecovery } from "./lib/preload-recovery";
 import { applyUiAppearance, watchSystemAppearance } from "./lib/ui-appearance";
 import { resolveUiLocale } from "./lib/ui-locale";
+import { applyWeComWebViewDocument } from "./lib/wecom-webview";
 import "./styles.css";
 
 markOnce("rk:renderer:module-evaluated");
@@ -17,6 +18,7 @@ void startMonitoring();
 installPreloadRecovery();
 applyUiDirection(resolveUiLocale());
 applyUiAppearance();
+applyWeComWebViewDocument();
 
 function PerformanceProbe() {
   useLayoutEffect(() => {
