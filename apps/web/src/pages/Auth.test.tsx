@@ -13,12 +13,22 @@ const wecom = vi.hoisted(() => ({
   isWeComWebView: vi.fn(() => false),
   commitWeComSession: vi.fn(),
 }));
+const wecomOAuth = vi.hoisted(() => ({
+  startWeComOAuth: vi.fn(),
+}));
 vi.mock("../lib/wecom-webview", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/wecom-webview")>();
   return {
     ...actual,
     isWeComWebView: wecom.isWeComWebView,
     commitWeComSession: wecom.commitWeComSession,
+  };
+});
+vi.mock("../lib/wecom-oauth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/wecom-oauth")>();
+  return {
+    ...actual,
+    startWeComOAuth: wecomOAuth.startWeComOAuth,
   };
 });
 
@@ -99,10 +109,10 @@ afterEach(async () => {
   vi.restoreAllMocks();
   delete window.rakazoDesktop;
 });
-async function render(mode: "in" | "up" | "forgot" = "in") {
+async function render(mode: "in" | "up" | "forgot" = "in", search = "") {
   await act(async () =>
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[search ? `/${search}` : "/"]}>
         <Routes>
           <Route path="/" element={<AuthPage mode={mode} />} />
           <Route path="/app" element={<p>App</p>} />
@@ -349,4 +359,83 @@ it("keeps client navigation when the WebView is not WeCom", async () => {
   await submit();
   expect(wecom.commitWeComSession).not.toHaveBeenCalled();
   expect(host.textContent).toBe("App");
+});
+
+it("offers 企微登录 beside password and SSO without starting OAuth", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render();
+  const wecomLogin = button("企微登录");
+  expect(wecomLogin).toBeDefined();
+  expect(wecomLogin.dataset.variant).toBe("outline");
+  expect(wecomLogin.className).toContain("w-full");
+  expect(wecomOAuth.startWeComOAuth).not.toHaveBeenCalled();
+});
+
+it.each(["in", "up"] as const)("offers 企微登录 beside SSO-only on %s", async (mode) => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(capabilities);
+  await render(mode);
+  expect(host.textContent).toContain("Continue with Example");
+  const wecomLogin = button("企微登录");
+  expect(wecomLogin.dataset.variant).toBe("outline");
+  expect(wecomOAuth.startWeComOAuth).not.toHaveBeenCalled();
+});
+
+it("hides 企微登录 in password recovery", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render("forgot");
+  expect(host.textContent).not.toContain("企微登录");
+});
+
+it("starts WeCom OAuth at the locked path and shows a pending label", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render();
+  await act(async () => button("企微登录").click());
+  expect(wecomOAuth.startWeComOAuth).toHaveBeenCalledTimes(1);
+  expect(button("Working…").disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
+
+it("auto-starts WeCom OAuth in the workbench once the capability is on", async () => {
+  wecom.isWeComWebView.mockReturnValue(true);
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...codeCapabilities,
+    emailCode: false,
+    wecom: true,
+  });
+  await render();
+  expect(wecomOAuth.startWeComOAuth).toHaveBeenCalled();
+  expect(host.textContent).toContain("Working…");
+});
+
+it("does not auto-start WeCom OAuth without the capability", async () => {
+  wecom.isWeComWebView.mockReturnValue(true);
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render();
+  expect(wecomOAuth.startWeComOAuth).not.toHaveBeenCalled();
+  expect(host.querySelector('input[name="email"]')).not.toBeNull();
+  expect(button("企微登录")).toBeDefined();
+});
+
+it("shows unbound copy from reason=unbound and does not auto-start", async () => {
+  wecom.isWeComWebView.mockReturnValue(true);
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...codeCapabilities,
+    emailCode: false,
+    wecom: true,
+  });
+  await render("in", "?reason=unbound");
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("未绑定");
+  expect(wecomOAuth.startWeComOAuth).not.toHaveBeenCalled();
+});
+
+it("shows denied copy from error=access_denied", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render("in", "?error=access_denied");
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("拒绝授权");
+});
+
+it("shows a generic failure for an unknown WeCom return code", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  await render("in", "?error=wecom_failed");
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe("Could not continue");
 });

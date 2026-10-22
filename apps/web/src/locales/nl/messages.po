@@ -5270,3 +5270,15 @@ msgstr "Jouw OpenRouter"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "Je team van altijd actieve agents<0/>dat je echt werk kunt geven."
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr ""

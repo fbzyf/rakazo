@@ -26,6 +26,13 @@ it("treats email code sign-in as an optional boolean capability", () => {
   expect(authCapabilitiesSchema.safeParse({ ...base, emailCode: "true" }).success).toBe(false);
 });
 
+it("treats WeCom OAuth as an optional boolean capability", () => {
+  const base = { passwordAuth: true, passwordReset: true, resetUrl: null, sso: null };
+  expect(authCapabilitiesSchema.parse(base).wecom).toBeUndefined();
+  expect(authCapabilitiesSchema.parse({ ...base, wecom: true }).wecom).toBe(true);
+  expect(authCapabilitiesSchema.safeParse({ ...base, wecom: "true" }).success).toBe(false);
+});
+
 it("only accepts complete legacy capabilities without partial SSO fields", () => {
   expect(
     legacyAuthCapabilitiesSchema.parse({ passwordReset: false, resetUrl: null, billing: true }),
