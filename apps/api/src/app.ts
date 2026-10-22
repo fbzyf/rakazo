@@ -103,7 +103,12 @@ import {
   verifyModelServesAgents,
   withSecretPersistence,
 } from "@rakazo/adapters";
-import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
+import {
+  createAuth,
+  isBlockedAuthPath,
+  loopbackTwinOrigins,
+  rewriteWecomCallbackRequest,
+} from "@rakazo/auth";
 import type { Actor, AuthCapabilities } from "@rakazo/contracts";
 import {
   isLocalhostOrLoopbackIp,
@@ -545,6 +550,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     passwordAuth: env.passwordAuth,
     breachedPasswordCheck: env.breachedPasswordCheck,
     oidc: env.oidc,
+    wecom: env.wecom,
     secret: env.authSecret,
     baseURL: env.authUrl,
     webOrigin: env.webOrigin,
@@ -947,6 +953,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   ] as const) {
     app.use(path, (_c, next) => runAsSystem(reason, next));
   }
+  app.get("/api/auth/callback/wecom", (c) =>
+    auth.handler(emptyAuthBodyAsJson(rewriteWecomCallbackRequest(c.req.raw))),
+  );
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
     if (isBlockedAuthPath(path)) {

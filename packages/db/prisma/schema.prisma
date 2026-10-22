@@ -75,6 +75,7 @@ model User {
   signupSurvey                SignupSurvey?
   computerRuns                ComputerRun[]
   devices                     UserDevice[]
+  wecomBindings               WecomUserBinding[]
 
   @@unique([email])
   @@map("user")
@@ -93,6 +94,17 @@ model SignupSurvey {
   createdAt DateTime @default(now())
 
   @@map("signup_surveys")
+}
+
+/// WeCom userid ↔ existing account. Rows are provisioned out of band; OAuth never inserts users.
+model WecomUserBinding {
+  wecomUserid String   @id @map("wecom_userid")
+  userId      String   @unique @map("user_id")
+  email       String
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wecom_user_binding")
 }
 
 model Session {

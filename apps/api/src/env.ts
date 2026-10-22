@@ -15,7 +15,8 @@ import {
   secretStoreOptionsFromEnv,
   telegramBotsFromEnv,
 } from "@rakazo/adapters";
-import type { OidcConfig } from "@rakazo/auth";
+import type { OidcConfig, WecomConfig } from "@rakazo/auth";
+import { wecomConfigFromEnv } from "@rakazo/auth";
 import type { MinimumClientBuilds, NavLink } from "@rakazo/contracts";
 import { parseMinimumClientBuilds, parseNavLinks } from "@rakazo/contracts";
 import { parseCrispWebsiteId } from "@rakazo/contracts/content-security-policy";
@@ -41,6 +42,7 @@ export interface AppEnv {
   /** Opt-in Have I Been Pwned check for new passwords. Default off: it calls an outside service. */
   breachedPasswordCheck?: boolean;
   oidc?: OidcConfig;
+  wecom?: WecomConfig;
   nodeEnv: string;
   desktopStackToken?: string;
   databaseUrl: string;
@@ -222,6 +224,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
           allowSignupBypass: source.OIDC_ALLOW_SIGNUP_BYPASS === "true",
         }
       : undefined;
+  const wecom = wecomConfigFromEnv(source);
   const authSecret = resolveAuthSecret(source);
   const webOrigin = resolveWebOrigin(source.WEB_ORIGIN, DEFAULT_WEB_ORIGIN, "WEB_ORIGIN");
   const sandboxProvider = resolveSandboxProvider(source);
@@ -231,6 +234,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     passwordAuth,
     breachedPasswordCheck: source.AUTH_BREACHED_PASSWORD_CHECK_ENABLED === "true",
     oidc,
+    wecom,
     nodeEnv: source.NODE_ENV ?? "",
     databaseUrl: required(source, "DATABASE_URL"),
     realtimeDatabaseUrl: source.REALTIME_DATABASE_URL ?? required(source, "DATABASE_URL"),
