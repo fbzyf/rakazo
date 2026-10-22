@@ -13,7 +13,66 @@ const STATE_PREFIX = "wecom-oauth-";
 const STATE_TTL_MS = 10 * 60_000;
 const AUTHORIZE_URL = "https://open.weixin.qq.com/connect/oauth2/authorize";
 const TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken";
+/** Official 自建应用「获取访问用户身份」 (doc 91023). */
 const USERINFO_URL = "https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo";
+/** Classic 网页授权 path; still served and returns `UserId`. */
+const USERINFO_URL_CLASSIC = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo";
+
+type WecomStep = "gettoken" | "getuserinfo";
+
+interface WecomApiBody {
+  access_token?: unknown;
+  userid?: unknown;
+  UserId?: unknown;
+  openid?: unknown;
+  OpenId?: unknown;
+  errcode?: unknown;
+  errmsg?: unknown;
+}
+
+function wecomErrcodeOk(errcode: unknown): boolean {
+  return errcode === undefined || errcode === null || errcode === 0 || errcode === "0";
+}
+
+function wecomCodeConsumed(errcode: unknown): boolean {
+  return errcode === 40029 || errcode === "40029";
+}
+
+function readWecomUserid(body: WecomApiBody): string | undefined {
+  for (const value of [body.userid, body.UserId]) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function wecomHasOpenId(body: WecomApiBody): boolean {
+  return (
+    (typeof body.openid === "string" && Boolean(body.openid.trim())) ||
+    (typeof body.OpenId === "string" && Boolean(body.OpenId.trim()))
+  );
+}
+
+function logWecomExchangeFailure(
+  step: WecomStep,
+  details: { http?: number; errcode?: unknown; errmsg?: unknown; reason?: string },
+): void {
+  const parts = [`WeCom OAuth exchange failed step=${step}`];
+  if (details.http !== undefined) parts.push(`http=${details.http}`);
+  if (details.errcode !== undefined) parts.push(`errcode=${String(details.errcode)}`);
+  if (typeof details.errmsg === "string" && details.errmsg) {
+    parts.push(`errmsg=${details.errmsg}`);
+  }
+  if (details.reason) parts.push(`reason=${details.reason}`);
+  console.warn(parts.join(" "));
+}
+
+async function readWecomJson(response: Response): Promise<WecomApiBody | undefined> {
+  try {
+    return (await response.json()) as WecomApiBody;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface WecomConfig {
   corpId: string;
@@ -80,32 +139,60 @@ export async function exchangeWecomAuthorizationCode(
   tokenUrl.searchParams.set("corpid", config.corpId);
   tokenUrl.searchParams.set("corpsecret", config.secret);
   const tokenResponse = await fetchImpl(tokenUrl);
-  if (!tokenResponse.ok) return null;
-  const tokenBody = (await tokenResponse.json()) as {
-    access_token?: unknown;
-    errcode?: unknown;
-  };
-  if (tokenBody.errcode || typeof tokenBody.access_token !== "string" || !tokenBody.access_token) {
+  const tokenBody = await readWecomJson(tokenResponse);
+  const accessToken = tokenBody?.access_token;
+  if (
+    !tokenBody ||
+    !wecomErrcodeOk(tokenBody.errcode) ||
+    typeof accessToken !== "string" ||
+    !accessToken
+  ) {
+    logWecomExchangeFailure("gettoken", {
+      http: tokenResponse.status,
+      errcode: tokenBody?.errcode,
+      errmsg: tokenBody?.errmsg,
+      reason: tokenBody ? undefined : "invalid_json",
+    });
     return null;
   }
-  const infoUrl = new URL(USERINFO_URL);
-  infoUrl.searchParams.set("access_token", tokenBody.access_token);
-  infoUrl.searchParams.set("code", code);
-  const infoResponse = await fetchImpl(infoUrl);
-  if (!infoResponse.ok) return null;
-  const info = (await infoResponse.json()) as {
-    userid?: unknown;
-    UserId?: unknown;
-    errcode?: unknown;
+
+  const tryUserinfo = async (endpoint: string) => {
+    const infoUrl = new URL(endpoint);
+    infoUrl.searchParams.set("access_token", accessToken);
+    infoUrl.searchParams.set("code", code);
+    const infoResponse = await fetchImpl(infoUrl);
+    return { infoResponse, info: await readWecomJson(infoResponse) };
   };
-  if (info.errcode) return null;
-  const userid =
-    typeof info.userid === "string" && info.userid.trim()
-      ? info.userid.trim()
-      : typeof info.UserId === "string" && info.UserId.trim()
-        ? info.UserId.trim()
-        : undefined;
-  return userid ? { userid } : null;
+
+  const official = await tryUserinfo(USERINFO_URL);
+  if (official.info && wecomErrcodeOk(official.info.errcode)) {
+    const userid = readWecomUserid(official.info);
+    if (userid) return { userid };
+  }
+
+  // Official path returned no member id. Retry classic unless WeCom already
+  // consumed the one-time code (40029).
+  if (!wecomCodeConsumed(official.info?.errcode)) {
+    const classic = await tryUserinfo(USERINFO_URL_CLASSIC);
+    if (classic.info && wecomErrcodeOk(classic.info.errcode)) {
+      const userid = readWecomUserid(classic.info);
+      if (userid) return { userid };
+    }
+  }
+
+  logWecomExchangeFailure("getuserinfo", {
+    http: official.infoResponse.status,
+    errcode: official.info?.errcode,
+    errmsg: official.info?.errmsg,
+    reason: !official.info
+      ? "invalid_json"
+      : wecomErrcodeOk(official.info.errcode) && wecomHasOpenId(official.info)
+        ? "openid_not_userid"
+        : wecomErrcodeOk(official.info.errcode)
+          ? "missing_userid"
+          : undefined,
+  });
+  return null;
 }
 
 function notConfigured(): never {
