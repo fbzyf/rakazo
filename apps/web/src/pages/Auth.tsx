@@ -16,6 +16,7 @@ import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { clearSpaceSelection } from "../lib/rpc";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
+import { commitWeComSession, isWeComWebView } from "../lib/wecom-webview";
 import { WindowChrome } from "./WindowChrome";
 
 type AuthMode = "in" | "up" | "forgot";
@@ -189,6 +190,16 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   function enterApp() {
     clearSpaceSelection();
+    if (isWeComWebView()) {
+      const next =
+        mode === "up"
+          ? "/onboarding"
+          : searchParams.get("next") === "/integrations/setup"
+            ? "/integrations/setup"
+            : "/app";
+      commitWeComSession(next);
+      return;
+    }
     // The routes move a signed-in user on once the session refetch lands. Navigating
     // first beats it, so the guards bounce through sign-in and the shell.
     entering.current = true;

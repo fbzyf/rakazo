@@ -22,6 +22,7 @@ describe("index.html theme bootstrap", () => {
 
   it("loads the bootstrap as a file so the CSP needs no inline scripts", () => {
     expect(html).toContain('<script src="/theme.js"></script>');
+    expect(html).toContain('<script src="/wecom.js"></script>');
     expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);
   });
 
@@ -46,5 +47,15 @@ describe("index.html theme bootstrap", () => {
     const css = read("../../../../packages/ui-web/src/styles.css");
     expect(css).toMatch(/:root\[data-os="mac"\] \{\s*--font-weight-normal: 420;\s*\}/);
     expect(read("../styles.css")).toContain("font-weight: var(--font-weight-normal);");
+  });
+
+  it("opts WeCom WebView into viewport-fit from a file, not an inline script", () => {
+    const wecom = read("../../public/wecom.js");
+    expect(html).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />',
+    );
+    expect(wecom).toMatch(/if \(!\/wxwork\/i\.test\(navigator\.userAgent\)\) return;/);
+    expect(wecom).toContain("viewport-fit=cover");
+    expect(wecom).toContain("dataset.wecom");
   });
 });
