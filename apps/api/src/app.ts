@@ -892,20 +892,21 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     });
   }
   app.get("/api/auth/capabilities", (c) => {
-    return c.json({
-      sso: env.oidc
-        ? { name: env.oidc.name, availability: auth.ssoAvailability() ?? "checking" }
-        : null,
-      passwordAuth: env.passwordAuth !== false,
-      passwordReset: env.passwordAuth !== false && Boolean(email),
-      resetUrl:
-        env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
-      emailCode: auth.emailCodeSignIn,
-      billing: Boolean(billing),
-      passkeyRpId: auth.passkeyRpId,
-      nativePasskeys: nativePasskeys(env, auth.passkeyRpId),
-      crispWebsiteId: billing ? (env.crispWebsiteId ?? null) : null,
-    } satisfies AuthCapabilities);
+    return c.json(
+      publicAuthCapabilities({
+        oidc: env.oidc,
+        ssoAvailability: auth.ssoAvailability(),
+        passwordAuth: env.passwordAuth,
+        hasEmail: Boolean(email),
+        emailCode: auth.emailCodeSignIn,
+        billing: Boolean(billing),
+        wecom: Boolean(env.wecom),
+        webOrigin: env.webOrigin,
+        passkeyRpId: auth.passkeyRpId,
+        nativePasskeys: nativePasskeys(env, auth.passkeyRpId),
+        crispWebsiteId: billing ? (env.crispWebsiteId ?? null) : null,
+      }),
+    );
   });
   mountAppAssociation(app, env);
   if (localEmailEmulator && env.nodeEnv === "development") {
@@ -1530,6 +1531,38 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await analytics?.flush();
       await logger.flush({ timeoutMs: 2_000 });
     },
+  };
+}
+
+/** Public `/api/auth/capabilities` body, including the optional WeCom flag. */
+export function publicAuthCapabilities(input: {
+  oidc?: { name: string };
+  ssoAvailability?: "available" | "unavailable" | "checking";
+  passwordAuth?: boolean;
+  hasEmail: boolean;
+  emailCode: boolean;
+  billing: boolean;
+  wecom: boolean;
+  webOrigin: string;
+  passkeyRpId?: string | null;
+  nativePasskeys?: AuthCapabilities["nativePasskeys"];
+  crispWebsiteId?: string | null;
+}): AuthCapabilities {
+  const passwordAuth = input.passwordAuth !== false;
+  return {
+    sso: input.oidc
+      ? { name: input.oidc.name, availability: input.ssoAvailability ?? "checking" }
+      : null,
+    passwordAuth,
+    passwordReset: passwordAuth && input.hasEmail,
+    resetUrl:
+      passwordAuth && input.hasEmail ? new URL("/reset-password", input.webOrigin).href : null,
+    emailCode: input.emailCode,
+    billing: input.billing,
+    wecom: input.wecom,
+    passkeyRpId: input.passkeyRpId ?? null,
+    nativePasskeys: input.nativePasskeys,
+    crispWebsiteId: input.crispWebsiteId ?? null,
   };
 }
 
