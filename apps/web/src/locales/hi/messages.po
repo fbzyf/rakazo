@@ -5270,3 +5270,15 @@ msgstr "आपका OpenRouter"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "हमेशा चालू रहने वाले एजेंटों की आपकी टीम<0/>जिन्हें आप असली काम सौंप सकते हैं।"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr ""

@@ -5270,3 +5270,15 @@ msgstr "사용 중인 OpenRouter"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "언제든 실제 작업을 맡길 수 있는<0/>나만의 Agent 팀"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr ""
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr ""

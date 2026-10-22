@@ -12,6 +12,8 @@ export const authCapabilitiesSchema = z.object({
   resetUrl: z.string().url().nullable(),
   // Older servers omit this field; clients treat omission as unavailable.
   emailCode: z.boolean().optional(),
+  // Optional: WeCom (企业微信) OAuth start at GET /api/auth/wecom. Omission means off.
+  wecom: z.boolean().optional(),
   billing: z.boolean().optional(),
 });
 export type AuthCapabilities = z.infer<typeof authCapabilitiesSchema>;

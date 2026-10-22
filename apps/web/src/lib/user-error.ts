@@ -25,6 +25,15 @@ export function authErrorText(error: unknown, fallback: string): string {
   if (code === "EMAIL_DELETION_UNAVAILABLE") return t`Could not continue`;
   if (code === "INVALID_OTP") return t`Invalid code`;
   if (code === "OTP_EXPIRED" || code === "TOO_MANY_ATTEMPTS") return t`Request a new code`;
+  if (code === "unbound" || code === "account_not_bound" || code === "WECOM_NOT_BOUND")
+    return t`未绑定`;
+  if (
+    code === "access_denied" ||
+    code === "user_denied" ||
+    code === "denied" ||
+    code === "WECOM_DENIED"
+  )
+    return t`拒绝授权`;
   return authErrorMessage(error, {
     fallback,
     email: credentialIssueText("email"),
