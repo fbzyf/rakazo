@@ -37,6 +37,9 @@ describe("auth policy", () => {
       "/request-password-reset",
       "/reset-password",
       "/delete-user",
+      "/wecom",
+      "/wecom/callback",
+      "/wecom/unbound",
     ]) {
       expect(isBlockedAuthPath(path), path).toBe(false);
     }

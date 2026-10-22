@@ -264,6 +264,36 @@ describe("loadEnv", () => {
   });
 });
 
+describe("WeCom environment", () => {
+  const wecom = {
+    WECOM_CORP_ID: "test-corp-id",
+    WECOM_SECRET: "test-wecom-secret",
+    WECOM_REDIRECT_URI: "https://app.example.test/api/auth/callback/wecom",
+  };
+
+  it("stays unconfigured when keys are missing and does not throw", () => {
+    expect(loadEnv(base).wecom).toBeUndefined();
+    expect(loadEnv({ ...base, WECOM_AGENT_ID: "1000082" }).wecom).toBeUndefined();
+    expect(loadEnv({ ...base, WECOM_CORP_ID: "test-corp-id" }).wecom).toBeUndefined();
+  });
+
+  it("loads the four keys and defaults the confirmed agent id", () => {
+    expect(loadEnv({ ...base, ...wecom }).wecom).toEqual({
+      corpId: "test-corp-id",
+      agentId: "1000082",
+      secret: "test-wecom-secret",
+      redirectUri: "https://app.example.test/api/auth/callback/wecom",
+    });
+    expect(loadEnv({ ...base, ...wecom, WECOM_AGENT_ID: "1000099" }).wecom?.agentId).toBe(
+      "1000099",
+    );
+  });
+
+  it("ignores an unusable redirect URI instead of crashing startup", () => {
+    expect(loadEnv({ ...base, ...wecom, WECOM_REDIRECT_URI: "not-a-url" }).wecom).toBeUndefined();
+  });
+});
+
 describe("OIDC environment", () => {
   const oidc = {
     OIDC_ISSUER: "https://identity.example.test",
