@@ -294,6 +294,11 @@ import {
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
+import {
+  isWeComWebView,
+  WECOM_ATTACHMENT_ACCEPT,
+  WECOM_FILE_INPUT_CLASS,
+} from "../lib/wecom-webview";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -3929,7 +3934,9 @@ function SpaceShell() {
               type="button"
               aria-label={t`Open navigation`}
               onClick={() => setMobileSidebarOpen(true)}
-              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
+              className={`app-no-drag grid shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden ${
+                isWeComWebView() ? "h-11 w-11" : "h-8 w-8"
+              }`}
             >
               <Menu size={19} strokeWidth={1.7} />
             </button>
@@ -6561,27 +6568,35 @@ export const Composer = memo(function Composer({
           expanded ? "gap-x-2 gap-y-2 pb-[9px] pt-3" : "gap-x-3.5 py-[9px]"
         }`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={ATTACHMENT_ACCEPT}
-          className="hidden"
-          onChange={(event) => pickAttachments(event.target.files)}
-        />
-        <Button
-          ref={attachButtonRef}
-          variant="ghost"
-          size="icon"
-          aria-label={t`Attach file`}
-          disabled={disabled}
-          onClick={() => fileInputRef.current?.click()}
-          className={`col-start-1 size-8 shrink-0 rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-            expanded ? "row-start-2" : ""
+        <div
+          className={`relative col-start-1 ${expanded ? "row-start-2" : ""} ${
+            isWeComWebView() ? "size-11" : "size-8"
           }`}
         >
-          <Plus size={16} strokeWidth={2} />
-        </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={isWeComWebView() ? WECOM_ATTACHMENT_ACCEPT : ATTACHMENT_ACCEPT}
+            aria-label={t`Attach file`}
+            disabled={disabled}
+            className={isWeComWebView() ? WECOM_FILE_INPUT_CLASS : "hidden"}
+            onChange={(event) => pickAttachments(event.target.files)}
+          />
+          <Button
+            ref={attachButtonRef}
+            variant="ghost"
+            size="icon"
+            aria-label={t`Attach file`}
+            aria-hidden={isWeComWebView() || undefined}
+            tabIndex={isWeComWebView() ? -1 : undefined}
+            disabled={disabled}
+            onClick={() => fileInputRef.current?.click()}
+            className="size-full shrink-0 rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus size={16} strokeWidth={2} />
+          </Button>
+        </div>
         <div
           ref={composerFieldRef}
           className={`flex min-w-0 flex-wrap items-end gap-1.5 ${
@@ -6707,7 +6722,9 @@ export const Composer = memo(function Composer({
             autoComplete="off"
             dir="auto"
             rows={1}
-            className="rk-scroll max-h-25 min-h-[24px] min-w-[8rem] flex-1 resize-none overflow-y-auto bg-transparent py-0.5 text-[15.5px] leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-40"
+            className={`rk-scroll max-h-25 min-h-[24px] min-w-[8rem] flex-1 resize-none overflow-y-auto bg-transparent py-0.5 leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-40 ${
+              isWeComWebView() ? "text-base" : "text-[15.5px]"
+            }`}
           />
         </div>
         <div
@@ -6728,7 +6745,9 @@ export const Composer = memo(function Composer({
                 aria-label={t`Send`}
                 disabled={sending || !canSend || disabled}
                 onClick={send}
-                className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
+                className={`rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95 ${
+                  isWeComWebView() ? "size-11" : "size-8"
+                }`}
               >
                 <ArrowUp size={16} strokeWidth={2.2} />
               </Button>
@@ -6753,7 +6772,9 @@ export const Composer = memo(function Composer({
                 aria-label={t`Send`}
                 disabled={sending || !canSend || disabled}
                 onClick={send}
-                className="size-8 shrink-0 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95 disabled:bg-white/10 disabled:text-muted-foreground/30 disabled:shadow-none"
+                className={`shrink-0 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95 disabled:bg-white/10 disabled:text-muted-foreground/30 disabled:shadow-none ${
+                  isWeComWebView() ? "size-11" : "size-8"
+                }`}
               >
                 <ArrowUp size={16} strokeWidth={2.2} />
               </Button>

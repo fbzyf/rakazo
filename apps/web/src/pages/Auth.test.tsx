@@ -9,6 +9,19 @@ import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { AuthPage } from "./Auth";
 
+const wecom = vi.hoisted(() => ({
+  isWeComWebView: vi.fn(() => false),
+  commitWeComSession: vi.fn(),
+}));
+vi.mock("../lib/wecom-webview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/wecom-webview")>();
+  return {
+    ...actual,
+    isWeComWebView: wecom.isWeComWebView,
+    commitWeComSession: wecom.commitWeComSession,
+  };
+});
+
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
     t: (strings: TemplateStringsArray | { message: string }, ...values: unknown[]) =>
@@ -75,6 +88,7 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.clearAllMocks();
+  wecom.isWeComWebView.mockReturnValue(false);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -306,4 +320,33 @@ it("leaves the password form unchanged without email codes", async () => {
   expect(host.querySelector('button[type="submit"]')!.textContent).toBe("Continue with email");
   expect(host.textContent).not.toContain("Use email code");
   expect(host.textContent).not.toContain("Use password");
+  expect(host.querySelector("form")!.className).toContain("w-full");
+  expect(host.querySelector("form")!.className).toContain("max-w-[460px]");
+});
+
+it("commits a WeCom session with a document navigation after password sign-in", async () => {
+  wecom.isWeComWebView.mockReturnValue(true);
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  vi.mocked(authClient.signIn.email).mockResolvedValue({ data: {}, error: null } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "person@example.com");
+  await enter(host.querySelector('input[type="password"]'), "password12");
+  await submit();
+  expect(authClient.signIn.email).toHaveBeenCalledWith({
+    email: "person@example.com",
+    password: "password12",
+  });
+  expect(wecom.commitWeComSession).toHaveBeenCalledWith("/app");
+  expect(host.textContent).not.toBe("App");
+});
+
+it("keeps client navigation when the WebView is not WeCom", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
+  vi.mocked(authClient.signIn.email).mockResolvedValue({ data: {}, error: null } as never);
+  await render();
+  await enter(host.querySelector('input[name="email"]'), "person@example.com");
+  await enter(host.querySelector('input[type="password"]'), "password12");
+  await submit();
+  expect(wecom.commitWeComSession).not.toHaveBeenCalled();
+  expect(host.textContent).toBe("App");
 });

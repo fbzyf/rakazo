@@ -16,4 +16,13 @@ describe("index.html theme bootstrap", () => {
       `theme === "light" ? "${lightTokens.background.toLowerCase()}" : "${darkTokens.background.toLowerCase()}"`,
     );
   });
+
+  it("opts WeCom WebView into viewport-fit without changing the default viewport", () => {
+    expect(html).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+    );
+    expect(html).toMatch(/if \(!\/wxwork\/i\.test\(navigator\.userAgent\)\) return;/);
+    expect(html).toContain("viewport-fit=cover");
+    expect(html).toContain("dataset.wecom");
+  });
 });

@@ -3,6 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (() => {
+        if (!/wxwork/i.test(navigator.userAgent)) return;
+        document.documentElement.dataset.wecom = "";
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+          viewport.setAttribute(
+            "content",
+            "width=device-width, initial-scale=1, viewport-fit=cover",
+          );
+        }
+      })();
+    </script>
     <meta name="description" content="Your team of always-on agents." />
     <meta name="theme-color" content="#0b0c0e" />
     <meta name="apple-mobile-web-app-title" content="Rakazo" />

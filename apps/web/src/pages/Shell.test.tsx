@@ -28,12 +28,18 @@ beforeEach(() => {
   i18n.activate("en");
 });
 
+const originalUserAgent = navigator.userAgent;
+
 afterEach(() => {
   act(() => root?.unmount());
   container?.remove();
   root = null;
   container = null;
   localStorage.clear();
+  Object.defineProperty(navigator, "userAgent", {
+    configurable: true,
+    value: originalUserAgent,
+  });
 });
 
 const bob: ComposerMention = { kind: "bot", id: "bot-2", name: "Bob" };
@@ -602,4 +608,25 @@ it.each([false, true])(
 it("hides call dictation until the server enables it", () => {
   renderComposer(vi.fn().mockResolvedValue(true));
   expect(container?.querySelector('button[aria-label="Hold to talk"]')).toBeNull();
+});
+
+it("keeps the attachment input display-none outside WeCom", () => {
+  renderComposer(vi.fn());
+  const input = container?.querySelector<HTMLInputElement>('input[type="file"]');
+  expect(input?.classList.contains("hidden")).toBe(true);
+});
+
+it("lets WeCom tap the file input itself", () => {
+  Object.defineProperty(navigator, "userAgent", {
+    configurable: true,
+    value:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 wxwork/4.1.28",
+  });
+  renderComposer(vi.fn());
+  const input = container?.querySelector<HTMLInputElement>('input[type="file"]');
+  expect(input).not.toBeNull();
+  expect(input?.classList.contains("hidden")).toBe(false);
+  expect(input?.className).toContain("opacity-0");
+  expect(input?.getAttribute("accept")).toContain("image/*");
+  expect(input?.getAttribute("aria-label")).toBe("Attach file");
 });
