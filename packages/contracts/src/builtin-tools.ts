@@ -64,6 +64,8 @@ export const BUILTIN_TOOL_NAMES = [
   "ticket_create",
   "ticket_update",
   "ticket_comment",
+  "design_crm_visit_search",
+  "design_crm_visit_get",
   "schedule_create",
   "schedule_list",
   "schedule_cancel",

@@ -355,6 +355,15 @@ import {
 
 export { selectRunConnections } from "./connection-context.js";
 
+import {
+  DESIGN_CRM_VISIT_GET,
+  DESIGN_CRM_VISIT_INSTRUCTION,
+  DESIGN_CRM_VISIT_SEARCH,
+  getDesignCrmVisit,
+  isDesignCrmVisitBot,
+  isDesignCrmVisitToolName,
+  searchDesignCrmVisits,
+} from "./design-crm-tools.js";
 import { withRuntimeCleanup } from "./runtime-stream.js";
 import {
   cancelScheduleFromTool,
@@ -454,6 +463,8 @@ const READ_ONLY_AGENT_TOOLS = new Set([
   "scratchpad_list",
   "board_tickets",
   "ticket_get",
+  "design_crm_visit_search",
+  "design_crm_visit_get",
   "skill_read",
   "web_search",
   "web_fetch",
@@ -4200,6 +4211,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             disabledBuiltinTools: bot.disabledBuiltinTools,
             fleetManagement: bot.fleetManagement,
             followUpFromUser: sourceMessage?.role === "user",
+            designCrmVisitEnabled: isDesignCrmVisitBot(bot.name),
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
           ...(hasMessagingIdentity && !isBackgroundRunTrigger(run.trigger)
@@ -6044,6 +6056,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }),
             );
           }
+          if (name === DESIGN_CRM_VISIT_SEARCH || name === DESIGN_CRM_VISIT_GET) {
+            const actor = await deps.prisma.user.findUnique({
+              where: { id: run.userId },
+              select: { email: true },
+            });
+            const crmDeps = {
+              actorEmail: actor?.email,
+              botName: bot.name,
+            };
+            return finish(
+              name === DESIGN_CRM_VISIT_SEARCH
+                ? await searchDesignCrmVisits(crmDeps, {
+                    query: args.query !== undefined ? String(args.query) : undefined,
+                    customer: args.customer !== undefined ? String(args.customer) : undefined,
+                    salesperson:
+                      args.salesperson !== undefined ? String(args.salesperson) : undefined,
+                    region: args.region !== undefined ? String(args.region) : undefined,
+                    visitType: args.visitType !== undefined ? String(args.visitType) : undefined,
+                    dateFrom: args.dateFrom !== undefined ? String(args.dateFrom) : undefined,
+                    dateTo: args.dateTo !== undefined ? String(args.dateTo) : undefined,
+                    crmVisitId: args.crmVisitId !== undefined ? String(args.crmVisitId) : undefined,
+                    cursor: args.cursor !== undefined ? String(args.cursor) : undefined,
+                  })
+                : await getDesignCrmVisit(crmDeps, {
+                    id: args.id !== undefined ? String(args.id) : undefined,
+                    crmVisitId: args.crmVisitId !== undefined ? String(args.crmVisitId) : undefined,
+                  }),
+            );
+          }
           if (name === "schedule_create") {
             const command = commandWatchFromTool(args.watch);
             const refusal =
@@ -7353,6 +7394,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 replyGuidance: runReplyGuidance(run.trigger),
                 disabledBuiltinTools,
                 offeredFleetTools: offeredFleetTools(builtins),
+                designCrmVisitEnabled: builtins.some((tool) => isDesignCrmVisitToolName(tool.name)),
               })
                 .filter((instruction): instruction is string => Boolean(instruction))
                 .join("\n\n"),
@@ -8416,6 +8458,8 @@ export function selectBuiltinToolsForRun(options: {
   fleetManagement?: boolean;
   /** A follow-up run whose source message the user wrote. */
   followUpFromUser?: boolean;
+  /** Offer Design CRM visit tools only on 客服助手. */
+  designCrmVisitEnabled?: boolean;
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   const fleetToolsAllowed = isOwnerStartedRun(options.trigger, Boolean(options.followUpFromUser));
@@ -8443,6 +8487,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.mediaVideoEnabled || tool.name !== "generate_video") &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
+      (options.designCrmVisitEnabled || !isDesignCrmVisitToolName(tool.name)) &&
       (!isBackgroundRunTrigger(options.trigger) ||
         ![
           "message_user",
@@ -8779,9 +8824,12 @@ export function userTurnInstructions(parts: {
   disabledBuiltinTools?: ReadonlySet<string>;
   /** The fleet tools the run was offered (see offeredFleetTools). */
   offeredFleetTools?: readonly string[];
+  /** Injected only when Design CRM visit tools are actually offered. */
+  designCrmVisitEnabled?: boolean;
 }): (string | undefined)[] {
   return [
     parts.botInstructions,
+    parts.designCrmVisitEnabled ? DESIGN_CRM_VISIT_INSTRUCTION : undefined,
     parts.historyRetrievalEnabled &&
     builtinOffered(parts.disabledBuiltinTools, "search_history") &&
     builtinOffered(parts.disabledBuiltinTools, "read_history")

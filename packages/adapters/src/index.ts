@@ -49,6 +49,7 @@ export * from "./current-time.js";
 export * from "./cursor-cloud-agent.js";
 export * from "./daytona-sandbox.js";
 export * from "./deployment-model.js";
+export * from "./design-crm-tools.js";
 export * from "./desktop-sandbox.js";
 export * from "./destination-emulator.js";
 export * from "./docker-sandbox.js";

@@ -3,6 +3,7 @@ import { CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE, FLEET_TOOL_NAMES } from "@rakazo/
 import { ONCE_ROUTINE_CRON } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { DESIGN_CRM_VISIT_INSTRUCTION } from "./design-crm-tools.js";
 import {
   appendToolCompletionAudit,
   createRunExecutor,
@@ -3622,6 +3623,71 @@ describe("ticket board tool capability", () => {
     }).map((tool) => tool.name);
     for (const name of ["message_bot", "handoff_to_bot", "message_agent"])
       expect(backgroundNames).not.toContain(name);
+  });
+});
+
+describe("design CRM visit tools", () => {
+  const options = {
+    graphicalToolsAllowed: false,
+    groupId: null,
+    trigger: "user",
+    semanticMemoryEnabled: false,
+    messagingChannelRun: false,
+  };
+  const crmNames = ["design_crm_visit_search", "design_crm_visit_get"];
+
+  it("omits Design CRM visit tools unless the service bot is selected", () => {
+    expect(
+      selectBuiltinToolsForRun(options)
+        .map((tool) => tool.name)
+        .filter((name) => crmNames.includes(name)),
+    ).toEqual([]);
+    expect(
+      selectBuiltinToolsForRun({ ...options, designCrmVisitEnabled: true })
+        .map((tool) => tool.name)
+        .filter((name) => crmNames.includes(name)),
+    ).toEqual(crmNames);
+  });
+
+  it("adds the daily-sync note only when those tools are offered", () => {
+    const without = userTurnInstructions({
+      botInstructions: "Bot instructions",
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      computerInstruction: "You have a persistent computer.",
+      pageBrowserAllowed: false,
+      workspaceInstruction: "This entire computer workspace is your private home.",
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: undefined,
+      agentSkillsLine: undefined,
+      taughtSkillsLine: undefined,
+      replyGuidance: "Reply.",
+    }).filter(Boolean);
+    expect(without).not.toContain(DESIGN_CRM_VISIT_INSTRUCTION);
+
+    const withNote = userTurnInstructions({
+      botInstructions: "Bot instructions",
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      computerInstruction: "You have a persistent computer.",
+      pageBrowserAllowed: false,
+      workspaceInstruction: "This entire computer workspace is your private home.",
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: undefined,
+      agentSkillsLine: undefined,
+      taughtSkillsLine: undefined,
+      replyGuidance: "Reply.",
+      designCrmVisitEnabled: true,
+    }).filter(Boolean);
+    expect(withNote[1]).toBe(DESIGN_CRM_VISIT_INSTRUCTION);
   });
 });
 

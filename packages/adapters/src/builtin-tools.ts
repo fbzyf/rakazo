@@ -12,6 +12,7 @@ import {
 } from "@rakazo/contracts";
 import { z } from "zod";
 import { allowPrivateHttpSecretOrigins } from "./bot-secrets.js";
+import { designCrmVisitGetTool, designCrmVisitSearchTool } from "./design-crm-tools.js";
 import { messageUserMaxLength } from "./user-progress.js";
 
 // The owner flag can land in process.env after static imports run (loadRootEnv
@@ -973,6 +974,8 @@ export const builtinAgentTools: ConnectorTool[] = [
       required: ["id", "body"],
     },
   },
+  designCrmVisitSearchTool,
+  designCrmVisitGetTool,
   {
     name: "schedule_create",
     description:
