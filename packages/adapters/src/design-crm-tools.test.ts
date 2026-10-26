@@ -15,6 +15,7 @@ import {
   MISSING_MIRROR_FIELD,
   redactEmail,
   redactPhone,
+  sameNotionId,
   searchDesignCrmVisits,
 } from "./design-crm-tools.js";
 
@@ -32,7 +33,7 @@ function visitPage(overrides: Record<string, unknown> = {}) {
       客户编码: { type: "rich_text", rich_text: [{ plain_text: "C-1001" }] },
       业务员: { type: "rich_text", rich_text: [{ plain_text: "Pat Example" }] },
       大区: { type: "rich_text", rich_text: [{ plain_text: "East" }] },
-      类型: { type: "rich_text", rich_text: [{ plain_text: "Follow-up" }] },
+      拜访类型: { type: "select", select: { name: "Follow-up" } },
       摘要: { type: "rich_text", rich_text: [{ plain_text: "Discussed sample catalog" }] },
       下一步: { type: "rich_text", rich_text: [{ plain_text: "Send quote" }] },
       产品线: { type: "rich_text", rich_text: [{ plain_text: "Hardware" }] },
@@ -192,14 +193,49 @@ describe("design CRM visit tools", () => {
     });
   });
 
-  it("refuses a page that is not in the locked database", async () => {
+  it("accepts a dashed Notion parent id against the undashed mirror id", async () => {
+    const dashed = "3d4793e1-abd5-8124-9fff-cb3644071cf7";
+    expect(sameNotionId(dashed, DESIGN_CRM_DEFAULT_DATABASE_ID)).toBe(true);
     const fetchMock = vi.fn<typeof fetch>(async () =>
-      Response.json(visitPage({ parent: { database_id: "other-database" } })),
+      Response.json(visitPage({ parent: { database_id: dashed } })),
+    );
+    const result = await getDesignCrmVisit(allowedDeps(fetchMock), { id: "page-visit-1" });
+    expect(result).toEqual({
+      visit: expect.objectContaining({ id: "page-visit-1", crmVisitId: "visit-1001" }),
+      source: "notion_mirror",
+      realtime: false,
+    });
+  });
+
+  it("refuses a page that is not in the locked database", async () => {
+    expect(
+      sameNotionId("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", DESIGN_CRM_DEFAULT_DATABASE_ID),
+    ).toBe(false);
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json(visitPage({ parent: { database_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" } })),
     );
     await expect(
       getDesignCrmVisit(allowedDeps(fetchMock), { id: "page-visit-1" }),
     ).resolves.toEqual({
       error: "Visit is not in the Design CRM mirror.",
+    });
+  });
+
+  it("filters visit type on 拜访类型 with select.equals", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.filter).toEqual({
+        property: "拜访类型",
+        select: { equals: "Follow-up" },
+      });
+      return Response.json({ results: [visitPage()], has_more: false });
+    });
+
+    const result = await searchDesignCrmVisits(allowedDeps(fetchMock), { visitType: "Follow-up" });
+    expect(result).toEqual({
+      visits: [expect.objectContaining({ visitType: "Follow-up" })],
+      source: "notion_mirror",
+      realtime: false,
     });
   });
 

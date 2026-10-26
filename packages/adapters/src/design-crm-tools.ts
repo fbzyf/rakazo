@@ -28,7 +28,7 @@ const FIELD_ALIASES: Record<string, readonly string[]> = {
   customerCode: ["客户编码", "customer code"],
   salesperson: ["业务员", "salesperson", "owner"],
   region: ["大区", "region"],
-  visitType: ["类型", "拜访类型", "visit type"],
+  visitType: ["拜访类型", "visit type"],
   summary: ["摘要", "summary"],
   nextStep: ["下一步", "next step"],
   productLine: ["产品线", "product line"],
@@ -105,6 +105,14 @@ export function isDesignCrmVisitBot(name: string | null | undefined): boolean {
 
 export function isDesignCrmReadAllowed(email: string | null | undefined): boolean {
   return ALLOWED_READ_EMAILS.has((email ?? "").trim().toLowerCase());
+}
+
+/** Notion often returns dashed UUIDs; the locked mirror id is stored without dashes. */
+export function sameNotionId(left: string | null | undefined, right: string | null | undefined) {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^0-9a-f]/g, "");
+  const a = left ? normalize(left) : "";
+  const b = right ? normalize(right) : "";
+  return a.length > 0 && a === b;
 }
 
 export function redactPhone(value: string): string {
@@ -214,7 +222,7 @@ export async function getDesignCrmVisit(
       path: `/pages/${pageId}`,
     });
     if ("error" in page) return page;
-    if (page.parent?.database_id !== config.databaseId) {
+    if (!sameNotionId(page.parent?.database_id, config.databaseId)) {
       return { error: "Visit is not in the Design CRM mirror." };
     }
     return { visit: toVisitRecord(page), source: "notion_mirror", realtime: false };
@@ -308,7 +316,7 @@ function notionSearchFilter(input: {
   const region = input.region?.trim();
   if (region) clauses.push({ property: "大区", rich_text: { contains: region } });
   const visitType = input.visitType?.trim();
-  if (visitType) clauses.push({ property: "类型", rich_text: { contains: visitType } });
+  if (visitType) clauses.push({ property: "拜访类型", select: { equals: visitType } });
   const query = input.query?.trim();
   if (query) {
     clauses.push({
