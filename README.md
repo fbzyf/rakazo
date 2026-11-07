@@ -266,6 +266,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and test m
 - [Mobile releases](./docs/mobile-release.md)
 - [Performance testing](./docs/performance.md)
 - [Fleet management](./docs/fleet-management.md)
+- [Maintaining this fork](./docs/fork-upgrade.md) (official Rakazo updates plus WeCom, Excel, and CRM work)
 
 ## Contributing
 
