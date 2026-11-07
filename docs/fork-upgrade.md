@@ -150,10 +150,14 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 
 ### 4. 测通后再换正在用的环境
 
+第一次追上官方时，GitHub 会显示升级分支和旧 `main` 冲突。这是正常的：底盘已经换成官方标签。合入方式是在升级分支上把当前 `main` 记为已合并、但保留升级分支的文件，再快进 `main`。不要在生产服务器上强推，也不要在正在跑的机器上当场解决冲突。
+
 1. 把测通的 `upgrade/<标签>` 合并进 `main` 并推送。
-2. 按 `docs/self-host.md` 的 Upgrade 一节更新镜像。`local` 标签要带当前提交重建；有发布标签则改 `RAKAZO_IMAGE_TAG` 后 pull。
-3. 接口启动时会跑 `prisma migrate deploy`。失败时健康检查应保持红灯，此时不要当成功。
-4. 再做一次上面的人手清单。
+2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调、`DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`）。允许名单和库 ID 不再写在代码里，空名单表示谁都不能查拜访。
+3. 若现有库还是 Postgres 16，先按 `docs/self-host-upgrading.md` 在**备份恢复环境**演练升到 18，再动生产。
+4. 按 `docs/self-host-upgrading.md` 更新镜像。`local` 标签要带当前提交重建；有发布标签则改 `RAKAZO_IMAGE_TAG` 后 pull。接口、后台任务、网页一起换。
+5. 接口启动时会跑 `prisma migrate deploy`。失败时健康检查应保持红灯，此时不要当成功。
+6. 再做一次上面的人手清单。
 
 ### 5. 回滚
 
@@ -171,4 +175,4 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 
 - `scripts/fork-upgrade-status.sh`：只看差距，不改代码。
 - `scripts/fork-upgrade-start.sh`：从官方标签开工作分支并拣入自有提交。
-- `.env.example` 里的企业微信回调和 CRM 库 ID 改成占位符。真正的值只属于服务器上的 `.env`。
+- `.env.example` 里的企业微信回调、CRM 库 ID 和 CRM 允许名单都是空的。真正的值只属于服务器上的 `.env`。

@@ -1,7 +1,6 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
 
 /** Locked Path A mirror. Tools never accept a caller-supplied database id. */
-export const DESIGN_CRM_DEFAULT_DATABASE_ID = "3d4793e1abd581249fffcb3644071cf7";
 export const DESIGN_CRM_VISIT_SEARCH = "design_crm_visit_search";
 export const DESIGN_CRM_VISIT_GET = "design_crm_visit_get";
 export const DESIGN_CRM_VISIT_TOOL_NAMES = [DESIGN_CRM_VISIT_SEARCH, DESIGN_CRM_VISIT_GET] as const;
@@ -13,7 +12,6 @@ export const DESIGN_CRM_ACCESS_DENIED = "This account cannot read Design CRM vis
 export const DESIGN_CRM_BOT_DENIED = "This tool is only available on 客服助手.";
 export const DESIGN_CRM_NOT_CONFIGURED = "Design CRM visit mirror is not configured.";
 
-const ALLOWED_READ_EMAILS = new Set(["ken@linposh.com.cn", "josh@linposh.com.cn"]);
 const NOTION_VERSION = "2022-06-28";
 const NOTION_API = "https://api.notion.com/v1";
 const SEARCH_PAGE_SIZE = 20;
@@ -103,8 +101,21 @@ export function isDesignCrmVisitBot(name: string | null | undefined): boolean {
   return name?.trim() === DESIGN_CRM_VISIT_BOT_NAME;
 }
 
-export function isDesignCrmReadAllowed(email: string | null | undefined): boolean {
-  return ALLOWED_READ_EMAILS.has((email ?? "").trim().toLowerCase());
+export function parseDesignCrmAllowedEmails(raw: string | undefined): Set<string> {
+  return new Set(
+    (raw ?? "")
+      .split(/[\s,]+/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+export function isDesignCrmReadAllowed(
+  email: string | null | undefined,
+  allowed: ReadonlySet<string>,
+): boolean {
+  const actor = (email ?? "").trim().toLowerCase();
+  return actor.length > 0 && allowed.has(actor);
 }
 
 /** Notion often returns dashed UUIDs; the locked mirror id is stored without dashes. */
@@ -237,7 +248,8 @@ export async function getDesignCrmVisit(
 }
 
 function authorizeDesignCrmVisit(deps: DesignCrmVisitToolDeps) {
-  if (!isDesignCrmReadAllowed(deps.actorEmail)) return { error: DESIGN_CRM_ACCESS_DENIED };
+  const allowed = parseDesignCrmAllowedEmails((deps.env ?? process.env).DESIGN_CRM_ALLOWED_EMAILS);
+  if (!isDesignCrmReadAllowed(deps.actorEmail, allowed)) return { error: DESIGN_CRM_ACCESS_DENIED };
   if (!isDesignCrmVisitBot(deps.botName)) return { error: DESIGN_CRM_BOT_DENIED };
   return undefined;
 }
@@ -245,11 +257,7 @@ function authorizeDesignCrmVisit(deps: DesignCrmVisitToolDeps) {
 function resolveConfig(deps: DesignCrmVisitToolDeps) {
   const env = deps.env ?? process.env;
   const token = (deps.token ?? env.DESIGN_CRM_NOTION_TOKEN ?? "").trim();
-  const databaseId = (
-    deps.databaseId ??
-    env.DESIGN_CRM_NOTION_DATABASE_ID ??
-    DESIGN_CRM_DEFAULT_DATABASE_ID
-  ).trim();
+  const databaseId = (deps.databaseId ?? env.DESIGN_CRM_NOTION_DATABASE_ID ?? "").trim();
   if (!token || !databaseId) return { error: DESIGN_CRM_NOT_CONFIGURED };
   return { token, databaseId };
 }
