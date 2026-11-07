@@ -7,9 +7,19 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import Language from "../app/(settings)/language";
+import { rpc } from "./api";
 import * as i18n from "./i18n";
+import { resumeLiveNotifications } from "./live-notifications";
 import { UI_LOCALE_LABELS, UI_LOCALE_STORAGE_KEY, UI_LOCALES } from "./ui-locale";
 
+vi.mock("./side-insets", () => ({ useSideInsets: () => ({}) }));
+vi.mock("./api", () => ({
+  currentApiBase: () => "https://rakazo.test",
+  loadSessionToken: async () => "token",
+  rpc: vi.fn(async () => ({})),
+  selectedSpaceId: () => "space-1",
+}));
+vi.mock("./live-notifications", () => ({ resumeLiveNotifications: vi.fn(async () => undefined) }));
 vi.mock("expo-secure-store", () => ({ setItemAsync: vi.fn() }));
 vi.mock("./ui-direction", () => ({ applyMobileUiDirection: vi.fn() }));
 vi.mock("./appearance", () => ({ mobileTokens: () => ({}) }));
@@ -28,6 +38,7 @@ vi.mock("react-native", () => {
     Text: View,
     Switch: () => null,
     StyleSheet: { create: (styles: unknown) => styles },
+    Platform: { OS: "ios" },
     useWindowDimensions: () => ({ fontScale: 1 }),
     Pressable: (props: {
       children?: ReactNode;
@@ -54,6 +65,8 @@ let root: Root;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.mocked(setItemAsync).mockReset();
+  vi.mocked(resumeLiveNotifications).mockClear();
+  vi.mocked(rpc).mockClear();
   i18n.resetI18nForTests();
   vi.spyOn(i18n, "setUiLocale");
   container = document.createElement("div");
@@ -79,7 +92,7 @@ function expectSelected(label: string) {
   expect(row(label).querySelector('[data-symbol="checkmark"]')).not.toBeNull();
 }
 
-it.each(["ru", "de"] as const)(
+it.each(["ru", "de", "zh-TW"] as const)(
   "saves and selects %s when its language row is pressed",
   async (locale) => {
     let finishSave!: () => void;
@@ -107,6 +120,8 @@ it.each(["ru", "de"] as const)(
       await vi.mocked(i18n.setUiLocale).mock.results[0]!.value;
     });
     expect(i18n.getActiveUiLocale()).toBe(locale);
+    expect(resumeLiveNotifications).toHaveBeenCalledWith("https://rakazo.test", "token", "space-1");
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("preferences/update", { locale });
     expectSelected(UI_LOCALE_LABELS[locale]);
     expect(row("English").getAttribute("aria-pressed")).toBe("false");
     expect([...container.querySelectorAll("button")].every((button) => !button.disabled)).toBe(

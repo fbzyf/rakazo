@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "@rakazo/ui-web/styles.css";
-@import "@fontsource-variable/geist/wght.css";
 
 @source "../../packages/ui-web/src/**/*.{ts,tsx}";
 @source "./src/**/*.{ts,tsx}";
@@ -12,7 +11,16 @@ body,
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* viewport-fit=cover lets the shell reach the screen edges; keep it clear of notches and the home indicator. */
+#root {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
 }
 
 /* WeCom workbench WebView only — do not promote the whole app to a phone layout. */
@@ -117,4 +125,28 @@ html[data-wecom] #root {
   50% {
     opacity: 0.3;
   }
+}
+
+/* A page prints alone and light: the app under an open page, its popups and its backdrop stay
+   off the paper, and the paper stays white past the page's end, whatever the app's theme. */
+@media print {
+  html:has([data-page-print]),
+  html:has([data-page-print]) body,
+  html:has([data-page-print]) #root {
+    height: auto;
+    background: #fff;
+  }
+  body:has([data-page-print]) > :not(:has([data-page-print])),
+  [data-slot="dialog-overlay"]:has(~ [data-page-print]) {
+    display: none;
+  }
+}
+
+/* Find in chat (pages/shell/chat-find-bar.tsx) paints its matches without touching the transcript. */
+::highlight(rk-find) {
+  background-color: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+::highlight(rk-find-current) {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }

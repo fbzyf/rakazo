@@ -1,9 +1,5 @@
-import {
-  clampThinkingLevel,
-  getSupportedThinkingLevels,
-  type Model,
-  Type,
-} from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
+import { clampThinkingLevel, getSupportedThinkingLevels, Type } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildModelConnectPlaintext } from "./model-connect.js";
@@ -11,6 +7,13 @@ import {
   openAiCompatibleModel,
   registerOpenAiCompatibleRuntime,
 } from "./pi-openai-compatible-provider.js";
+
+/** Fixtures connect as the deployment owner, who may use local model servers. */
+const connectAsOwner = (
+  input: Parameters<typeof buildModelConnectPlaintext>[0],
+  previous?: string,
+  options?: Parameters<typeof buildModelConnectPlaintext>[2],
+) => buildModelConnectPlaintext(input, previous, { allowPrivateEndpoint: true, ...options });
 
 const modelId = "arbitrary-model";
 const baseUrl = "http://127.0.0.1:8090/v1";
@@ -20,7 +23,7 @@ afterEach(() => {
 });
 
 it("keeps the existing keyless connection format", () => {
-  const plaintext = buildModelConnectPlaintext({ provider: "openai-compatible", baseUrl, modelId });
+  const plaintext = connectAsOwner({ provider: "openai-compatible", baseUrl, modelId });
   expect(plaintext).toContain(baseUrl);
   expect(plaintext).not.toContain("apiKey");
 });
@@ -96,6 +99,7 @@ describe("OpenAI-compatible standard thinking transport", () => {
     const models = registerOpenAiCompatibleRuntime(builtinModels(), {
       modelId,
       baseUrl,
+      allowPrivate: true,
       reasoning: supportsThinking,
       maxTokens,
     });
@@ -157,6 +161,8 @@ describe("OpenAI-compatible standard thinking transport", () => {
     const { payload, result, events } = await capture("medium");
     expect(payload.messages[0]?.role).toBe("system");
     expect(payload.stream).toBe(true);
+    // Google's OpenAI-compatible endpoint rejects the whole request over `store`.
+    expect(payload).not.toHaveProperty("store");
     expect(payload.tools[0]?.function.name).toBe("lookup");
     expect(events).toEqual(
       expect.arrayContaining(["thinking_delta", "text_delta", "toolcall_delta", "done"]),

@@ -15,6 +15,10 @@ export const FLEET_WRITE_TOOL_NAMES = FLEET_TOOL_NAMES.filter(
   (name): name is Exclude<(typeof FLEET_TOOL_NAMES)[number], "list_fleet"> => name !== "list_fleet",
 );
 
+/** What a feedback report is about, and how long its description may be. */
+export const FEEDBACK_KINDS = ["bug", "feedback"] as const;
+export const FEEDBACK_DESCRIPTION_MAX_LENGTH = 2_000;
+
 /** Built-in tool names a bot may disable. Kept aligned with the adapter tool list. */
 export const BUILTIN_TOOL_NAMES = [
   "computer_observe",
@@ -27,16 +31,22 @@ export const BUILTIN_TOOL_NAMES = [
   "write_file",
   "attach_file",
   "shell",
+  "user_computer_shell",
+  "user_computer_observe",
+  "user_computer_act",
   "open_path",
   "launch_app",
   "request_takeover",
   "ask_user",
+  "connect_app",
   "message_user",
   "request_secret",
+  "generate_secret",
   "list_secrets",
   "secret_request",
   "forget_secret",
   "render_plot",
+  "save_page",
   "generate_image",
   "generate_video",
   "add_mcp_server",
@@ -48,6 +58,9 @@ export const BUILTIN_TOOL_NAMES = [
   "cloud_agent_status",
   "cloud_agent_reply",
   "cloud_agent_cancel",
+  "request_purchase",
+  "purchase_status",
+  "paid_request",
   "search_history",
   "read_history",
   "save_memory",
@@ -68,6 +81,7 @@ export const BUILTIN_TOOL_NAMES = [
   "design_crm_visit_get",
   "schedule_create",
   "schedule_list",
+  "schedule_update",
   "schedule_cancel",
   "end_call",
   "call_user",
@@ -76,7 +90,6 @@ export const BUILTIN_TOOL_NAMES = [
   "skill_update",
   "skill_delete",
   "run_subagent",
-  "propose_instructions_update",
   "create_space",
   "spawn_bot",
   "update_bot",
@@ -84,6 +97,8 @@ export const BUILTIN_TOOL_NAMES = [
   "archive_bot",
   "message_bot",
   "handoff_to_bot",
+  "update_preferences",
+  "feedback",
   "connect_agent",
   "respond_agent_connection",
   "message_agent",

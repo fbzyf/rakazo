@@ -1,14 +1,19 @@
+import { reportUiLocale } from "@rakazo/core";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 import { Checkmark } from "../../components/row-accessories";
 import { SettingsGroup, SettingsRow } from "../../components/settings-group";
+import { currentApiBase, loadSessionToken, rpc, selectedSpaceId } from "../../lib/api";
 import { mobileTokens } from "../../lib/appearance";
-import { setUiLocale, useI18n } from "../../lib/i18n";
+import { getActiveUiLocale, setUiLocale, useI18n } from "../../lib/i18n";
+import { resumeLiveNotifications } from "../../lib/live-notifications";
 import { native, useThemedStyles } from "../../lib/native";
+import { useSideInsets } from "../../lib/side-insets";
 import type { UiLocale } from "../../lib/ui-locale";
 import { UI_LOCALE_LABELS, UI_LOCALES } from "../../lib/ui-locale";
 
 export default function Language() {
+  const sideInsets = useSideInsets();
   const { t, locale } = useI18n();
   const styles = useThemedStyles(createStyles);
   const [saving, setSaving] = useState(false);
@@ -19,6 +24,19 @@ export default function Language() {
     setSaving(true);
     setError(null);
     void setUiLocale(code)
+      .then(async () => {
+        // Emails follow the app's language too; a failure leaves the next app start to save it.
+        void reportUiLocale(getActiveUiLocale, (locale) =>
+          rpc("preferences/update", { locale }),
+        ).catch(() => undefined);
+        // Native notification copy follows the locale, but a failure there must
+        // not read as a failed language change: the choice is already applied.
+        await resumeLiveNotifications(
+          currentApiBase(),
+          await loadSessionToken(),
+          selectedSpaceId() ?? "",
+        ).catch(() => undefined);
+      })
       .catch(() => {
         setError(t("Could not change language"));
       })
@@ -27,7 +45,7 @@ export default function Language() {
 
   return (
     <ScrollView
-      style={styles.screen}
+      style={[styles.screen, sideInsets]}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
     >

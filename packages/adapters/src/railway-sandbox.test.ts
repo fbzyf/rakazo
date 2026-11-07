@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { ComputerRef, ProcessEvent } from "@rakazo/adapter-kit";
+import { screenDisplayArgv, shellQuote } from "@rakazo/core/node/desktop-runtime";
 import type { RailwayGraphQLErrorItem, SandboxInfo } from "railway";
 import {
   RailwayGraphQLError,
@@ -766,13 +767,18 @@ describe("Railway computers", () => {
     );
     sandbox.exec.mockImplementation(async (command: string) => {
       if (
-        command.includes("find . -type f -print0") ||
+        command.includes("find . -regextype") ||
         command.startsWith("'echo'") ||
         command.startsWith("chmod ")
       ) {
         const result = await promisify(execFile)("bash", [
           "-c",
-          command.replaceAll("/home/rakazo", directory),
+          command
+            .replaceAll("/home/rakazo", directory)
+            .replaceAll(
+              "find . -regextype posix-extended",
+              process.platform === "darwin" ? "find -E ." : "find . -regextype posix-extended",
+            ),
         ]);
         return { ...result, exitCode: 0 };
       }
@@ -827,7 +833,12 @@ describe("Railway computers", () => {
     const events: ProcessEvent[] = [];
     for await (const event of provider.execute(
       computer,
-      { argv: ["echo", "a; touch /tmp/unwanted"], cwd: "notes", timeoutMs: 5000 },
+      {
+        argv: ["echo", "a; touch /tmp/unwanted"],
+        cwd: "notes",
+        env: { FAKE_TOKEN: "fake-secret" },
+        timeoutMs: 5000,
+      },
       ctx,
     ))
       events.push(event);
@@ -836,9 +847,30 @@ describe("Railway computers", () => {
       { type: "stderr", data: "timeout" },
       { type: "exit", code: 124 },
     ]);
+    // Secrets go in the env field, never in command text.
     expect(sandbox.exec).toHaveBeenCalledWith(
-      expect.stringContaining("'a; touch /tmp/unwanted'"),
-      expect.objectContaining({ cwd: "/home/rakazo/notes", timeoutSec: 5 }),
+      "'echo' 'a; touch /tmp/unwanted'",
+      expect.objectContaining({
+        cwd: "/home/rakazo/notes",
+        env: expect.objectContaining({
+          FAKE_TOKEN: "fake-secret",
+          UV_CACHE_DIR: "/tmp/rakazo-cache/uv",
+        }),
+        timeoutSec: 5,
+      }),
+    );
+  });
+
+  it("runs a bot's commands on that bot's own screen", async () => {
+    sandbox.exec.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0, timedOut: false });
+    for await (const _event of provider.execute(
+      computer,
+      { argv: ["ffmpeg", "out.mp4"] },
+      { ...ctx, botId: "becky" },
+    ));
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      screenDisplayArgv(["ffmpeg", "out.mp4"], "becky", 1).map(shellQuote).join(" "),
+      expect.anything(),
     );
   });
 
@@ -871,6 +903,10 @@ describe("Railway computers", () => {
     if (!screen.url) throw new Error("missing screen URL");
     const url = new URL(screen.url);
     expect(url.origin).toBe("https://screen-test.up.railway.app");
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      expect.stringContaining("0.0.0.0:6080 8>&-"),
+      expect.anything(),
+    );
     expect(url.searchParams.get("path")).toBe("websockify?token=screen-token");
     expect(url.searchParams.has("token")).toBe(false);
   });
@@ -922,12 +958,28 @@ describe("Railway computers", () => {
       const content = Uint8Array.from([0, 255, 128]);
       await writeFile(path.join(directory, "bin/tool"), content, { mode: 0o700 });
       await writeFile(path.join(directory, "note"), "saved", { mode: 0o600 });
+      for (const name of [
+        "project/node_modules/pkg/data",
+        ".cache/uv/data",
+        ".yarn/cache/pkg",
+        "core.123",
+        "run.log",
+      ]) {
+        await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
+        await writeFile(path.join(directory, name), "excluded");
+      }
+
       await symlink("bin", path.join(directory, "linked-bin"));
       await promisify(execFile)("mkfifo", [path.join(directory, "pipe")]);
       sandbox.exec.mockImplementation(async (command: string) => {
         const result = await promisify(execFile)("bash", [
           "-c",
-          command.replaceAll("/home/rakazo", directory),
+          command
+            .replaceAll("/home/rakazo", directory)
+            .replaceAll(
+              "find . -regextype posix-extended",
+              process.platform === "darwin" ? "find -E ." : "find . -regextype posix-extended",
+            ),
         ]);
         return { ...result, exitCode: 0, timedOut: false };
       });

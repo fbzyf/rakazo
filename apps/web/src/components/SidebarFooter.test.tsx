@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { DesktopUpdateState } from "@rakazo/contracts";
+import { Toaster } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -32,7 +33,7 @@ async function render(
   image?: string,
   onIntegrations = vi.fn(),
   onBoard?: () => void,
-  logos?: Array<{ name: string; logo: string }>,
+  logos?: Array<{ name: string; logo?: string }>,
 ) {
   const email = "account@rakazo.test";
   await act(async () =>
@@ -52,14 +53,15 @@ async function render(
           open
           onOpenChange={() => {}}
           onIntegrations={onIntegrations}
+          onSkills={vi.fn()}
           onBoard={onBoard}
           onArtifacts={() => {}}
           onSettings={() => {}}
-          onUsage={() => {}}
           onLogOut={() => {}}
           signingOut={false}
           logOutError={null}
         />
+        <Toaster />
       </DesktopUpdatesProvider>,
     ),
   );
@@ -112,7 +114,6 @@ it("installs the ready update only through the footer button", async () => {
   const icon = document.querySelector<HTMLButtonElement>('[aria-label="Install update"]')!;
   expect(icon).not.toBeNull();
   expect(document.body.textContent).not.toContain("New update available");
-  expect(icon.title).toBe("Install update");
   await act(async () => icon.click());
   expect(install).toHaveBeenCalledTimes(1);
   expect(
@@ -139,12 +140,12 @@ it("opens integrations and keeps the existing account actions and links", async 
   expect(onIntegrations).toHaveBeenCalledOnce();
   const menu = document.querySelector('[data-slot="popover-content"]')!;
   expect([...menu.querySelectorAll("button, a")].map((row) => row.textContent)).toEqual([
-    "Usage",
+    "Settings",
+    "Skills",
+    "Artifacts",
+    "Board",
     "Get the mobile app",
     "Docs",
-    "Board",
-    "Artifacts",
-    "Settings",
     "Log out",
   ]);
   expect(host.querySelector('[data-testid="user-menu-trigger"]')?.getAttribute("aria-label")).toBe(
@@ -158,15 +159,13 @@ it("omits Board when unavailable", async () => {
   );
 });
 
-it("offers the existing Android download on Android", async () => {
+it("offers Google Play on Android", async () => {
   vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android");
   await render();
   const mobile = [...document.querySelectorAll("a")].find(
     (link) => link.textContent === "Get the mobile app",
   )!;
-  expect(mobile.href).toBe(
-    "https://github.com/elie222/rakazo/releases/download/android/rakazo.apk",
-  );
+  expect(mobile.href).toBe("https://play.google.com/store/apps/details?id=com.rakazo.app");
 });
 
 it("falls back when app artwork fails and accepts replacement artwork", async () => {
@@ -196,25 +195,25 @@ it.each(["throw", "state"] as const)(
         message: "Update could not be installed",
       });
     await render();
+    // The notice is a toast, which mounts and leaves on the toaster's own timers.
     const notice = () => document.querySelector('[aria-label="Desktop update"]');
-    const later = [...notice()!.querySelectorAll("button")].find(
-      (button) => button.textContent === "Later",
-    )!;
-    await act(async () => later.click());
-    expect(notice()).toBeNull();
+    const later = () =>
+      [...notice()!.querySelectorAll("button")].find((button) => button.textContent === "Later")!;
+    await vi.waitFor(() => expect(notice()).not.toBeNull());
+    await act(async () => later().click());
+    await vi.waitFor(() => expect(notice()).toBeNull());
     await act(async () =>
       document.querySelector<HTMLButtonElement>('[aria-label="Install update"]')!.click(),
     );
-    expect(notice()?.querySelector('[role="status"]')?.textContent).toBe(
-      failure === "throw"
-        ? "Could not complete the update. Try again."
-        : "Update could not be installed",
+    await vi.waitFor(() =>
+      expect(notice()?.querySelector('[role="status"]')?.textContent).toBe(
+        failure === "throw"
+          ? "Could not complete the update. Try again."
+          : "Update could not be installed",
+      ),
     );
-    const dismiss = [...notice()!.querySelectorAll("button")].find(
-      (button) => button.textContent === "Later",
-    )!;
-    await act(async () => dismiss.click());
-    expect(notice()).toBeNull();
+    await act(async () => later().click());
+    await vi.waitFor(() => expect(notice()).toBeNull());
   },
 );
 
@@ -223,11 +222,86 @@ it.each([
   [0, 0],
   [25, 0],
   [26, 1],
-  [43, 1],
-  [44, 2],
-  [61, 2],
-  [62, 3],
+  [47, 1],
+  [48, 2],
+  [69, 2],
+  [70, 3],
   [200, 3],
 ])("fits marks into %ipx without consuming label or padding space", (width, count) => {
   expect(sidebarMarkCount(width)).toBe(count);
+});
+
+it("keeps at most three marks with the same tile and a missing-logo fallback", async () => {
+  await render("Demo User", undefined, undefined, undefined, [
+    { name: "Gmail", logo: "https://example.test/gmail.svg" },
+    { name: "Notion" },
+    { name: "GitHub", logo: "https://example.test/github.svg" },
+    { name: "Slack" },
+  ]);
+  const tiles = [...host.querySelectorAll('span[aria-hidden="true"] > span')];
+  expect(tiles).toHaveLength(3);
+  expect(new Set(tiles.map((tile) => tile.className)).size).toBe(1);
+  expect(tiles[1]!.textContent).toBe("N");
+});
+
+const personal = {
+  id: "org-personal",
+  name: "Personal",
+  defaultSpaceId: "s1",
+  spaceIds: ["s1"],
+  canManage: true,
+};
+const work = {
+  id: "org-work",
+  name: "Work",
+  defaultSpaceId: "s2",
+  spaceIds: ["s2"],
+  canManage: true,
+};
+
+async function renderOrganizations(
+  organizations: (typeof personal)[],
+  onSwitchOrganization = vi.fn(),
+) {
+  await act(async () =>
+    root.render(
+      <DesktopUpdatesProvider>
+        <SidebarFooter
+          name="Demo User"
+          initials="DU"
+          email="account@rakazo.test"
+          open
+          onOpenChange={() => {}}
+          onIntegrations={() => {}}
+          onSkills={() => {}}
+          onArtifacts={() => {}}
+          onSettings={() => {}}
+          onLogOut={() => {}}
+          signingOut={false}
+          logOutError={null}
+          organizations={organizations}
+          activeOrganizationId="org-personal"
+          onSwitchOrganization={onSwitchOrganization}
+        />
+      </DesktopUpdatesProvider>,
+    ),
+  );
+  return [...document.querySelector('[data-slot="popover-content"]')!.querySelectorAll("button")];
+}
+
+it("shows no organization rows with one organization", async () => {
+  const rows = await renderOrganizations([personal]);
+  expect(rows[0]!.textContent).toBe("Settings");
+});
+
+it("lists two organizations with the active one checked", async () => {
+  const onSwitch = vi.fn();
+  const rows = await renderOrganizations([personal, work], onSwitch);
+  expect(rows.map((row) => row.textContent).slice(0, 3)).toEqual(["Personal", "Work", "Settings"]);
+  expect(rows[0]!.getAttribute("aria-current")).toBe("true");
+  expect(rows[0]!.querySelector("svg")).not.toBeNull();
+  expect(rows[1]!.hasAttribute("aria-current")).toBe(false);
+  expect(rows[1]!.querySelector("svg")).toBeNull();
+  await act(async () => rows[1]!.click());
+  expect(onSwitch).toHaveBeenCalledWith(work);
 });

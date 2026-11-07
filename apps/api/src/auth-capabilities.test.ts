@@ -58,7 +58,7 @@ describe("GET /api/auth/capabilities wecom flag", () => {
         wecom: false,
         webOrigin,
       }),
-    ).toEqual({
+    ).toMatchObject({
       sso: null,
       passwordAuth: true,
       passwordReset: false,

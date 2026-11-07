@@ -1,28 +1,61 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { darkTokens, lightTokens } from "@rakazo/ui-tokens";
+import { webDarkTokens, webLightTokens } from "@rakazo/ui-tokens";
 import { describe, expect, it } from "vitest";
 
 // index.html sets theme-color before any module loads, so it cannot import the
-// tokens; this pins its inline fallbacks to the shared palette instead.
+// tokens; this pins its fallbacks to the web palette instead.
 describe("index.html theme bootstrap", () => {
-  const html = readFileSync(fileURLToPath(new URL("../../index.html", import.meta.url)), "utf8");
+  const read = (relative: string) =>
+    readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
+  const html = read("../../index.html");
+  const script = read("../../public/theme.js");
 
-  it("uses the shared background tokens for theme-color", () => {
+  it("uses the web background tokens for theme-color", () => {
     expect(html).toContain(
-      `<meta name="theme-color" content="${darkTokens.background.toLowerCase()}" />`,
+      `<meta name="theme-color" content="${webDarkTokens.background.toLowerCase()}" />`,
     );
-    expect(html).toContain(
-      `theme === "light" ? "${lightTokens.background.toLowerCase()}" : "${darkTokens.background.toLowerCase()}"`,
+    expect(script).toContain(
+      `theme === "light" ? "${webLightTokens.background.toLowerCase()}" : "${webDarkTokens.background.toLowerCase()}"`,
     );
   });
 
-  it("opts WeCom WebView into viewport-fit without changing the default viewport", () => {
-    expect(html).toContain(
-      '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+  it("loads the bootstrap as a file so the CSP needs no inline scripts", () => {
+    expect(html).toContain('<script src="/theme.js"></script>');
+    expect(html).toContain('<script src="/wecom.js"></script>');
+    expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);
+  });
+
+  it.each([
+    ["MacIntel", 0, "mac"],
+    ["MacIntel", 5, undefined],
+    ["Win32", 0, undefined],
+    ["Linux x86_64", 0, undefined],
+  ] as const)("flags macOS (%s, %i touch points) for its regular weight", (platform, touch, os) => {
+    const root = { dataset: {} as Record<string, string>, style: {} as Record<string, string> };
+    const run = new Function("document", "navigator", "localStorage", "matchMedia", script);
+    run(
+      { documentElement: root, querySelector: () => null },
+      { platform, maxTouchPoints: touch },
+      { getItem: () => null },
+      () => ({ matches: false }),
     );
-    expect(html).toMatch(/if \(!\/wxwork\/i\.test\(navigator\.userAgent\)\) return;/);
-    expect(html).toContain("viewport-fit=cover");
-    expect(html).toContain("dataset.wecom");
+    expect(root.dataset.os).toBe(os);
+  });
+
+  it("raises regular text to 420 only on macOS", () => {
+    const css = read("../../../../packages/ui-web/src/styles.css");
+    expect(css).toMatch(/:root\[data-os="mac"\] \{\s*--font-weight-normal: 420;\s*\}/);
+    expect(read("../styles.css")).toContain("font-weight: var(--font-weight-normal);");
+  });
+
+  it("opts WeCom WebView into viewport-fit from a file, not an inline script", () => {
+    const wecom = read("../../public/wecom.js");
+    expect(html).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />',
+    );
+    expect(wecom).toMatch(/if \(!\/wxwork\/i\.test\(navigator\.userAgent\)\) return;/);
+    expect(wecom).toContain("viewport-fit=cover");
+    expect(wecom).toContain("dataset.wecom");
   });
 });

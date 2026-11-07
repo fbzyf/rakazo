@@ -3,7 +3,6 @@ import { builtinAgentTools } from "./builtin-tools.js";
 import {
   DESIGN_CRM_ACCESS_DENIED,
   DESIGN_CRM_BOT_DENIED,
-  DESIGN_CRM_DEFAULT_DATABASE_ID,
   DESIGN_CRM_NOT_CONFIGURED,
   DESIGN_CRM_VISIT_GET,
   DESIGN_CRM_VISIT_SEARCH,
@@ -13,21 +12,25 @@ import {
   isDesignCrmVisitBot,
   isDesignCrmVisitToolName,
   MISSING_MIRROR_FIELD,
+  parseDesignCrmAllowedEmails,
   redactEmail,
   redactPhone,
   sameNotionId,
   searchDesignCrmVisits,
 } from "./design-crm-tools.js";
 
-const ALLOWED_EMAIL = "ken@linposh.com.cn";
-const OTHER_ALLOWED_EMAIL = "josh@linposh.com.cn";
+const ALLOWED_EMAIL = "owner@example.test";
+const OTHER_ALLOWED_EMAIL = "teammate@example.test";
 const SERVICE_BOT = "客服助手";
+const TEST_MIRROR_ID = "0123456789abcdef0123456789abcdef";
+const TEST_MIRROR_ID_DASHED = "01234567-89ab-cdef-0123-456789abcdef";
+const OTHER_MIRROR_ID_DASHED = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
 function visitPage(overrides: Record<string, unknown> = {}) {
   return {
     id: "page-visit-1",
     url: "https://notion.example.test/page-visit-1",
-    parent: { database_id: DESIGN_CRM_DEFAULT_DATABASE_ID },
+    parent: { database_id: TEST_MIRROR_ID },
     properties: {
       客户: { type: "rich_text", rich_text: [{ plain_text: "Acme Demo Customer" }] },
       客户编码: { type: "rich_text", rich_text: [{ plain_text: "C-1001" }] },
@@ -53,18 +56,23 @@ function allowedDeps(fetchMock: typeof fetch) {
     actorEmail: ALLOWED_EMAIL,
     botName: SERVICE_BOT,
     token: "notion-test-token",
-    databaseId: DESIGN_CRM_DEFAULT_DATABASE_ID,
+    databaseId: TEST_MIRROR_ID,
     fetch: fetchMock,
+    env: {
+      DESIGN_CRM_ALLOWED_EMAILS: `${ALLOWED_EMAIL},${OTHER_ALLOWED_EMAIL}`,
+    },
   };
 }
 
 describe("design CRM allowlist", () => {
-  it("admits only the two locked work emails", () => {
-    expect(isDesignCrmReadAllowed(ALLOWED_EMAIL)).toBe(true);
-    expect(isDesignCrmReadAllowed(OTHER_ALLOWED_EMAIL.toUpperCase())).toBe(true);
-    expect(isDesignCrmReadAllowed("outsider@example.test")).toBe(false);
-    expect(isDesignCrmReadAllowed("bread@example.test")).toBe(false);
-    expect(isDesignCrmReadAllowed(undefined)).toBe(false);
+  it("admits only emails listed in DESIGN_CRM_ALLOWED_EMAILS", () => {
+    const allowed = parseDesignCrmAllowedEmails(`${ALLOWED_EMAIL}, ${OTHER_ALLOWED_EMAIL}`);
+    expect(isDesignCrmReadAllowed(ALLOWED_EMAIL, allowed)).toBe(true);
+    expect(isDesignCrmReadAllowed(OTHER_ALLOWED_EMAIL.toUpperCase(), allowed)).toBe(true);
+    expect(isDesignCrmReadAllowed("outsider@example.test", allowed)).toBe(false);
+    expect(isDesignCrmReadAllowed("bread@example.test", allowed)).toBe(false);
+    expect(isDesignCrmReadAllowed(undefined, allowed)).toBe(false);
+    expect(isDesignCrmReadAllowed(ALLOWED_EMAIL, parseDesignCrmAllowedEmails(""))).toBe(false);
   });
 
   it("attaches only to 客服助手", () => {
@@ -101,9 +109,7 @@ describe("design CRM visit tools", () => {
 
   it("returns a search page from the hardcoded mirror only", async () => {
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-      expect(String(input)).toBe(
-        `https://api.notion.com/v1/databases/${DESIGN_CRM_DEFAULT_DATABASE_ID}/query`,
-      );
+      expect(String(input)).toBe(`https://api.notion.com/v1/databases/${TEST_MIRROR_ID}/query`);
       expect(init?.method).toBe("POST");
       const body = JSON.parse(String(init?.body));
       expect(body.page_size).toBe(20);
@@ -194,8 +200,8 @@ describe("design CRM visit tools", () => {
   });
 
   it("accepts a dashed Notion parent id against the undashed mirror id", async () => {
-    const dashed = "3d4793e1-abd5-8124-9fff-cb3644071cf7";
-    expect(sameNotionId(dashed, DESIGN_CRM_DEFAULT_DATABASE_ID)).toBe(true);
+    const dashed = TEST_MIRROR_ID_DASHED;
+    expect(sameNotionId(dashed, TEST_MIRROR_ID)).toBe(true);
     const fetchMock = vi.fn<typeof fetch>(async () =>
       Response.json(visitPage({ parent: { database_id: dashed } })),
     );
@@ -208,9 +214,7 @@ describe("design CRM visit tools", () => {
   });
 
   it("refuses a page that is not in the locked database", async () => {
-    expect(
-      sameNotionId("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", DESIGN_CRM_DEFAULT_DATABASE_ID),
-    ).toBe(false);
+    expect(sameNotionId(OTHER_MIRROR_ID_DASHED, TEST_MIRROR_ID)).toBe(false);
     const fetchMock = vi.fn<typeof fetch>(async () =>
       Response.json(visitPage({ parent: { database_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" } })),
     );
@@ -242,7 +246,10 @@ describe("design CRM visit tools", () => {
   it("does not call Notion when the token is missing", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     await expect(
-      searchDesignCrmVisits({ ...allowedDeps(fetchMock), token: "", env: {} }, { query: "Acme" }),
+      searchDesignCrmVisits(
+        { ...allowedDeps(fetchMock), token: "", env: { DESIGN_CRM_ALLOWED_EMAILS: ALLOWED_EMAIL } },
+        { query: "Acme" },
+      ),
     ).resolves.toEqual({ error: DESIGN_CRM_NOT_CONFIGURED });
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -19,12 +19,15 @@ if [[ "${RAKAZO_BACKUP_REQUIRE_VOLUME:-0}" == 1 ]] && { ! mountpoint -q /var/bac
 fi
 latest=""
 if [[ -d /var/backups/rakazo ]]; then
-  if ! latest="$(find /var/backups/rakazo -mindepth 2 -maxdepth 2 -name SHA256SUMS -type f -printf '%T@\n' | sort -nr | head -1)"; then
+  if ! latest="$(find /var/backups/rakazo -mindepth 2 -maxdepth 2 -name SHA256SUMS -type f -printf '%T@ %h\n' | sort -nr | head -1)"; then
     report "Could not inspect backup history"
   fi
 fi
-if [[ -z "${latest}" ]] || (($(date +%s) - ${latest%.*} > 36 * 3600)); then
+latest_time="${latest%% *}"
+if [[ -z "${latest}" ]] || (($(date +%s) - ${latest_time%.*} > 36 * 3600)); then
   report "No verified backup completed in the last 36 hours"
+elif [[ -e "${latest#* }/rakazo.dump" && "${RAKAZO_BACKUP_ALLOW_PLAINTEXT:-0}" != 1 ]]; then
+  report "The latest backup is not encrypted; set RAKAZO_BACKUP_AGE_RECIPIENTS"
 fi
 if systemctl is-failed --quiet rakazo-backup.service; then
   report "The last backup service run failed"
@@ -39,6 +42,21 @@ else
       report "IPv4 SSH allow rule is missing for port ${port}"
     fi
   done
+fi
+
+if [[ -e /run/reboot-required ]]; then
+  report "Installed updates need a reboot to take effect"
+fi
+
+if grep -q '^RAKAZO_AUDIT_SINK_URL=.' /etc/rakazo/audit-ship.env 2>/dev/null && ! systemctl is-active --quiet rakazo-audit-ship.service; then
+  report "Audit trail shipping is not running"
+fi
+
+# Opt-in because self-hosted Compose project names are chosen by the operator.
+if [[ -n "${RAKAZO_MONITOR_COMPOSE_PROJECT:-}" ]]; then
+  if ! service_health="$(/usr/local/sbin/rakazo-check-services "${RAKAZO_MONITOR_COMPOSE_PROJECT}")"; then
+    report "${service_health:-Could not inspect application container health}"
+  fi
 fi
 
 printf '%s\n' "${messages[@]}" | /usr/local/sbin/rakazo-host-alert host-check

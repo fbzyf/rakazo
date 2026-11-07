@@ -92,6 +92,26 @@ describe("routine history", () => {
       actor.userId,
     ]);
   });
+  it("returns a shorter page with a cursor when asked for fewer runs", async () => {
+    const { prisma, runs } = fixture();
+    runs.mockResolvedValue(
+      Array.from({ length: 3 }, (_, i) => ({
+        id: `run-${i}`,
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        error: null,
+        createdAt: at,
+        startedAt: at,
+        completedAt: at,
+      })),
+    );
+    const history = await listRoutineRuns(prisma, actor, "routine-1", undefined, 2);
+    expect(runs).toHaveBeenCalledWith(expect.objectContaining({ take: 3 }));
+    expect(history.runs.map((row) => row.id)).toEqual(["run-0", "run-1"]);
+    expect(history.nextCursor).toEqual({ id: "run-1", createdAt: at.toISOString() });
+  });
   it("bounds stored errors like thread failures", async () => {
     const { prisma, runs } = fixture();
     const error = "x".repeat(400);
@@ -184,5 +204,25 @@ describe("routine history", () => {
       groupId: "group-1",
       messageId: "group-reply",
     });
+  });
+  it("returns the due time recorded on a run that started late", async () => {
+    const { prisma, runs } = fixture();
+    runs.mockResolvedValue(
+      [new Date("2026-01-02T08:00:00Z"), null].map((lateSince, i) => ({
+        id: `run-${i}`,
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        error: null,
+        lateSince,
+        createdAt: at,
+        startedAt: at,
+        completedAt: at,
+      })),
+    );
+    const history = await listRoutineRuns(prisma, actor, "routine-1");
+    expect(RoutineHistorySchema.parse(history)).toEqual(history);
+    expect(history.runs.map((run) => run.lateSince)).toEqual(["2026-01-02T08:00:00.000Z", null]);
   });
 });

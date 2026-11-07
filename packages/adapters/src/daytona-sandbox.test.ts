@@ -67,6 +67,38 @@ describe("DaytonaSandboxProvider", () => {
     );
   });
 
+  it("prunes excluded directories before listing their contents and keeps project core", async () => {
+    const fixture = daytonaFixture();
+    const provider = new DaytonaSandboxProvider({ apiKey: "test-key" }, fixture.client);
+    const computer = await provider.provision({ botId: "bot-a", homePath: "/unused" }, context);
+    for (const file of [
+      "project/node_modules/pkg/index.js",
+      ".cache/uv/data",
+      ".yarn/cache/pkg",
+      ".yarn/patches/fix.patch",
+      "packages/core/notes.txt",
+      "core.123",
+      "run.log",
+      ".browser-profiles/chromium/Cache/data",
+      ".browser-profiles/chromium/Default/Cookies",
+    ]) {
+      await provider.writeFile(computer, { path: file, content: Buffer.from("ok") }, context);
+    }
+    const listing = vi.spyOn(fixture.sandbox.fs, "listFiles");
+    const files = [];
+    for await (const file of provider.exportWorkspace(computer, context)) files.push(file.path);
+    expect(files.sort()).toEqual([
+      ".browser-profiles/chromium/Default/Cookies",
+      ".yarn/patches/fix.patch",
+      "packages/core/notes.txt",
+    ]);
+    const visited = listing.mock.calls.map(([directory]) => directory);
+    expect(visited).not.toContain("/home/daytona/rakazo-home/project/node_modules");
+    expect(visited).not.toContain("/home/daytona/rakazo-home/.cache");
+    expect(visited).not.toContain("/home/daytona/rakazo-home/.yarn/cache");
+    expect(visited).not.toContain("/home/daytona/rakazo-home/.browser-profiles/chromium/Cache");
+  });
+
   it("omits snapshot from create() when unset", async () => {
     vi.stubEnv("DAYTONA_SNAPSHOT", "   ");
     const fixture = daytonaFixture();
@@ -110,7 +142,7 @@ describe("DaytonaSandboxProvider", () => {
     const events = [];
     for await (const event of provider.execute(
       computer,
-      { argv: ["echo", "hello"], unsetEnv: ["FAILED"] },
+      { argv: ["echo", "hello"], env: { FAKE_TOKEN: "fake-secret" }, unsetEnv: ["FAILED"] },
       context,
     )) {
       events.push(event);
@@ -119,10 +151,11 @@ describe("DaytonaSandboxProvider", () => {
       { type: "stdout", data: "hello\n" },
       { type: "exit", code: 0 },
     ]);
+    // Secrets go in the env field, never in command text.
     expect(fixture.executeCommand).toHaveBeenCalledWith(
       "'env' '-u' 'FAILED' '--' 'echo' 'hello'",
       "/home/daytona/rakazo-home",
-      undefined,
+      { FAKE_TOKEN: "fake-secret" },
       300,
     );
 
@@ -691,6 +724,27 @@ describe("DaytonaSandboxProvider", () => {
     expect(fixture.stop).toHaveBeenCalledTimes(2);
   });
 
+  it("reports only a started sandbox as running, without starting it", async () => {
+    const fixture = daytonaFixture({ id: "remote", state: "stopped" });
+    const provider = new DaytonaSandboxProvider({ apiKey: "test-key" }, fixture.client);
+    const computer = {
+      id: "remote",
+      botId: "bot-a",
+      kind: "daytona" as const,
+      providerRef: "remote",
+    };
+
+    expect(await provider.isRunning(computer, context)).toBe(false);
+    fixture.remote.state = "started";
+    expect(await provider.isRunning(computer, context)).toBe(true);
+    expect(await provider.isRunning({ ...computer, kind: "e2b" }, context)).toBe(false);
+    fixture.remote.missing = true;
+    expect(await provider.isRunning(computer, context)).toBe(false);
+    fixture.get.mockRejectedValueOnce(new Error("temporary Daytona outage"));
+    await expect(provider.isRunning(computer, context)).rejects.toThrow("temporary Daytona outage");
+    expect(fixture.start).not.toHaveBeenCalled();
+  });
+
   it("distinguishes transient lookup failures from an already deleted sandbox", async () => {
     const fixture = daytonaFixture({ id: "remote" });
     const provider = new DaytonaSandboxProvider({ apiKey: "test-key" }, fixture.client);
@@ -752,6 +806,9 @@ describe("DaytonaSandboxProvider", () => {
       researcher,
     );
     expect(writerView.url).toContain("6100-preview");
+    expect(
+      fixture.executeCommand.mock.calls.some(([command]) => command.includes("0.0.0.0:6100 8>&-")),
+    ).toBe(true);
     expect(researcherView.url).not.toBe(writerView.url);
     expect(researcherView.url).toContain("6100-preview");
     expect(new URL(researcherView.url!).searchParams.get("path")).toMatch(

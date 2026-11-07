@@ -2,6 +2,7 @@ import type { AdapterContext, ConnectorCall } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import type { Evidence } from "./cases.js";
+import { EMPTY_SETTINGS } from "./cases.js";
 import { EvalServices } from "./services.js";
 import type { RoutineEvidence } from "./silence.js";
 import { SILENCE_EVAL_CASES } from "./silence.js";
@@ -31,6 +32,10 @@ function evidence(run: Partial<RoutineEvidence> = {}): Evidence {
     pendingApproval: null,
     priorMemory: "",
     toolNames: [],
+    toolCalls: [],
+    finalStep: 1,
+    settings: EMPTY_SETTINGS,
+    settingsBefore: EMPTY_SETTINGS,
     messaging: { originThreadId: null, outbound: [] },
     routineRuns: [routineRun],
   };
@@ -124,12 +129,21 @@ describe("source-read evidence", () => {
     services.seedGithubReleases([]);
     const args = { owner: "example", repo: "widget" };
     const events = [];
+    const github = {
+      id: "github",
+      connectorId: "composio",
+      externalId: "GITHUB",
+      displayName: "GitHub",
+    };
     for await (const event of services.execute(
       { tool: "GITHUB_GET_RELEASE", args, executionId: "synthetic" } as ConnectorCall,
-      context,
+      { ...context, connectedConnections: [github] },
     ))
       events.push(event);
-    expect(events).toContainEqual({ type: "result", data: expect.objectContaining({ ok: false }) });
+    expect(events).toContainEqual({
+      type: "result",
+      data: expect.objectContaining({ data: expect.objectContaining({ ok: false }) }),
+    });
     expect(services.calls[0]?.outcome).toBe("rejected");
     const e = evidence({ calls: services.calls });
     expect(SILENCE_EVAL_CASES[1]!.grade(e)).toContainEqual({

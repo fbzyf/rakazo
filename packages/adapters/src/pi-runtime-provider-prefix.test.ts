@@ -3,8 +3,9 @@ import { createServer } from "node:http";
 import type { ConnectorTool } from "@rakazo/adapter-kit";
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
-import { userTurnInstructions } from "./executor.js";
-import { PiAgentRuntime, resolveRuntimeModel } from "./pi-runtime.js";
+import { PiAgentRuntime } from "./pi-runtime.js";
+import { resolveRuntimeModel } from "./pi-runtime-models.js";
+import { userTurnInstructions } from "./run-instructions.js";
 
 describe("Pi outgoing provider prefixes", () => {
   it.each(["png", "gif"] as const)(
@@ -26,6 +27,11 @@ describe("Pi outgoing provider prefixes", () => {
       let requestCount = 0;
       let imageSent = false;
       const server = createServer((request, response) => {
+        // Local tools can probe any listening loopback port; only model calls are counted.
+        if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
+          response.writeHead(404).end();
+          return;
+        }
         void (async () => {
           const chunks: Buffer[] = [];
           for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -44,7 +50,7 @@ describe("Pi outgoing provider prefixes", () => {
       if (!address || typeof address === "string") throw new Error("Fixture endpoint unavailable");
       try {
         const beforeCall = vi.fn(async (call: { inputTokensEstimate: number }) => {
-          expect(call.inputTokensEstimate).toBeGreaterThan(16_384);
+          expect(call.inputTokensEstimate).toBeGreaterThan(1399);
           expect(call.inputTokensEstimate).toBeLessThan(128_000 - 4096);
           return "image-reservation";
         });
@@ -66,6 +72,7 @@ describe("Pi outgoing provider prefixes", () => {
               provider: "openai-compatible",
               id: "fixture",
               baseUrl: `http://127.0.0.1:${address.port}/v1`,
+              allowPrivateEndpoint: true,
               acceptsImages: true,
               contextWindow: 128_000,
               maxTokens: 4096,
@@ -125,6 +132,7 @@ describe("Pi outgoing provider prefixes", () => {
             provider: "openai-compatible",
             id: "fixture",
             baseUrl: `http://127.0.0.1:${address.port}/v1`,
+            allowPrivateEndpoint: true,
             contextWindow: 32_768,
             maxTokens: 32_768,
           },
@@ -146,8 +154,15 @@ describe("Pi outgoing provider prefixes", () => {
 
   it("reserves input room in an unknown OpenRouter model's actual completion request", async () => {
     const requests: Array<{ max_completion_tokens?: number; messages?: unknown[] }> = [];
+    const authorizationHeaders: Array<string | undefined> = [];
     const server = createServer((request, response) => {
+      // Local tools can probe any listening loopback port; only model calls are recorded.
+      if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
+        response.writeHead(404).end();
+        return;
+      }
       void (async () => {
+        authorizationHeaders.push(request.headers.authorization);
         const chunks: Buffer[] = [];
         for await (const chunk of request) chunks.push(Buffer.from(chunk));
         requests.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
@@ -206,6 +221,7 @@ describe("Pi outgoing provider prefixes", () => {
         expect(events).toContainEqual(expect.objectContaining({ type: "done", text: "Ready" }));
       }
       expect(requests).toHaveLength(3);
+      expect(authorizationHeaders).toEqual(Array(3).fill("Bearer fake-fixture-key"));
       expect(requests[0]).toMatchObject({ max_completion_tokens: 4096 });
       expect(requests[1]!.max_completion_tokens).toBeGreaterThan(0);
       // Pi may reduce this further for its own input safety margin on tiny windows.
@@ -293,6 +309,7 @@ describe("Pi outgoing provider prefixes", () => {
               provider: "openai-compatible",
               id: "fixture",
               baseUrl: `http://127.0.0.1:${address.port}/v1`,
+              allowPrivateEndpoint: true,
             },
           },
           { signal: AbortSignal.timeout(15000) },

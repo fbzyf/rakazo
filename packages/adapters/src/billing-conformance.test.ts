@@ -75,7 +75,7 @@ for (const [name, create] of Object.entries(factories)) {
   describe(`${name} billing conformance (offline)`, () => {
     it("describes a recurring price", async () => {
       const { provider } = create();
-      expect(provider.describe().capabilities).toEqual({ trials: true, portal: true });
+      expect(provider.describe().capabilities).toMatchObject({ trials: true, portal: true });
       const price = await provider.getPrice();
       expect(price.amount).toBeGreaterThan(0);
       expect(price.currency).toMatch(/^[a-z]{3}$/);
@@ -94,11 +94,22 @@ for (const [name, create] of Object.entries(factories)) {
         endedAt: null,
       });
       expect(snapshot?.trialEndsAt?.getTime()).toBe(NOW + 14 * 86_400_000);
+      expect(snapshot?.currentPeriodStartsAt?.getTime()).toBe(NOW);
       expect(snapshot?.currentPeriodEndsAt).toBeInstanceOf(Date);
       expect(await harness.provider.getCustomerSubscription(customerId)).toEqual(snapshot);
       expect(
         (await harness.provider.createPortal({ customerId, returnUrl: urls.successUrl })).url,
       ).toMatch(/^https:\/\//);
+    });
+
+    it("ends a trial early and starts the first paid period now", async () => {
+      const harness = create();
+      const customerId = await subscribe(harness, 14);
+      await harness.provider.endTrial?.(customerId);
+      const snapshot = await harness.provider.getCustomerSubscription(customerId);
+      expect(snapshot?.status).toBe("active");
+      expect(snapshot?.currentPeriodStartsAt?.getTime()).toBe(NOW);
+      expect(snapshot?.currentPeriodEndsAt?.getTime()).toBeGreaterThan(NOW);
     });
 
     it("refuses a deleted customer with a classified error and reports no access", async () => {
@@ -237,3 +248,73 @@ for (const [name, create] of Object.entries(factories)) {
     });
   });
 }
+
+describe("offline monthly credit renewals", () => {
+  it("grants each paid period once across two renewals and keeps top-ups permanent", async () => {
+    let timestamp = NOW;
+    const provider = new BillingEmulator({ modelCredits: true, now: () => timestamp });
+    const { customerId } = await provider.createCustomer({
+      email: "billing@example.test",
+      organizationId: "fixture",
+    });
+    const checkout = {
+      customerId,
+      amountCents: 1000,
+      successUrl: "https://example.test/success",
+      cancelUrl: "https://example.test/cancel",
+    };
+    await provider.createCreditCheckout({ ...checkout, monthly: true });
+    provider.completeCreditCheckout(customerId);
+    await provider.createCreditCheckout({ ...checkout, monthly: false });
+    provider.completeCreditCheckout(customerId);
+    const month = 30 * 86400000;
+    timestamp += 2 * month;
+    const purchases = await provider.listCreditPurchases(customerId);
+    expect(purchases.filter((p) => p.expiresAt).map((p) => p.expiresAt)).toEqual([
+      new Date(NOW + month).toISOString(),
+      new Date(NOW + 2 * month).toISOString(),
+      new Date(NOW + 3 * month).toISOString(),
+    ]);
+    expect(purchases.filter((p) => !p.expiresAt)).toHaveLength(1);
+    expect(new Set(purchases.map((p) => p.id)).size).toBe(4);
+    expect(await provider.listCreditPurchases(customerId)).toEqual(purchases);
+    expect((await provider.getCustomerSubscription(customerId))?.currentPeriodEndsAt).toEqual(
+      new Date(NOW + 3 * month),
+    );
+  });
+});
+
+describe("offline own-key tiers", () => {
+  it("subscribes to a tier and moves to another only from the plan the caller saw", async () => {
+    const provider = new BillingEmulator({ modelCredits: true, now });
+    const { customerId } = await provider.createCustomer({
+      email: "billing@example.test",
+      organizationId: "fixture",
+    });
+    await provider.createByokCheckout({
+      customerId,
+      amountCents: 4900,
+      tier: "pro",
+      successUrl: "https://example.test/success",
+      cancelUrl: "https://example.test/cancel",
+    });
+    const subscriptionId = provider.completeByokCheckout(customerId);
+    const subscribed = await provider.getCustomerSubscription(customerId);
+    expect(subscribed).toMatchObject({ byokTier: "pro", byokPriceCents: 4900 });
+    const pro = { tier: "pro", interval: "month", amountCents: 4900 } as const;
+    const max = { tier: "max", interval: "month", amountCents: 14900 } as const;
+    await expect(
+      provider.changeByokPlan(customerId, subscriptionId, { from: max, to: pro }),
+    ).resolves.toBe(false);
+    await expect(
+      provider.changeByokPlan(customerId, subscriptionId, { from: pro, to: max }),
+    ).resolves.toBe(true);
+    // The same interval keeps the period.
+    expect(await provider.getCustomerSubscription(customerId)).toMatchObject({
+      byokTier: "max",
+      byokPriceCents: 14900,
+      byokInterval: "month",
+      currentPeriodEndsAt: subscribed?.currentPeriodEndsAt,
+    });
+  });
+});

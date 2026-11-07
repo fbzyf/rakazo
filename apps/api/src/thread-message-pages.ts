@@ -142,15 +142,17 @@ async function withoutPeerRunMessages<
       return blocks.some(isBackgroundInputBlock);
     }
     if (!peerRunIds.has(row.runId)) return true;
-    // Keep peer receipts (chips), ask cards, and the bot's own text or attachment reply.
+    // Keep peer receipts (chips), ask cards, and the bot's text, chart, page or attachment reply.
     return blocks.some(
       (block) =>
         block.kind === "bot_message_sent" ||
         block.kind === "bot_message_received" ||
         block.kind === "ask" ||
         block.kind === "text" ||
+        block.kind === "chart" ||
         block.kind === "file" ||
-        block.kind === "image",
+        block.kind === "image" ||
+        block.kind === "page",
     );
   });
 }
@@ -187,7 +189,7 @@ export async function isBackgroundRun(
   return backgroundRun;
 }
 
-/** Peer-run SSE events that must still reach an open thread (terminals, waits, receipts, asks, text, attachments). */
+/** Peer-run SSE events that must still reach an open thread (terminals, waits, receipts, asks, text, charts, attachments). */
 export function shouldForwardPeerThreadEvent(event: {
   type: string;
   payload: { blocks?: unknown };
@@ -216,8 +218,10 @@ export function shouldForwardPeerThreadEvent(event: {
           block.kind === "bot_message_sent" ||
           block.kind === "ask" ||
           block.kind === "text" ||
+          block.kind === "chart" ||
           block.kind === "file" ||
-          block.kind === "image"),
+          block.kind === "image" ||
+          block.kind === "page"),
     )
   );
 }

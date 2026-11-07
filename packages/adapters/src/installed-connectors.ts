@@ -8,6 +8,7 @@ import type {
   SecretStore,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
+import { availableInSpace, itemSecretIn } from "@rakazo/db";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import {
@@ -42,13 +43,13 @@ import {
   SELECTED_SCHEMA_MAX_BYTES,
 } from "./lazy-tool-catalog.js";
 import { localSchemaReference } from "./openai-tool-parameters.js";
-import { actorMayUsePrivateEndpoint } from "./private-endpoint.js";
 import type { RemoteTransportDependencies, RemoteUrlPolicy } from "./remote-mcp.js";
 import {
   assertSafeRemoteUrl,
   callRemoteMcpTool,
   createSafeRemoteFetch,
   listRemoteMcpTools,
+  RemoteMcpSessionCache,
 } from "./remote-mcp.js";
 
 const ModelHeaderName = HeaderName.refine(
@@ -103,6 +104,9 @@ export type RemoteConnectorDependencies = RemoteTransportDependencies;
 type RemoteRequestPolicy = RemoteConnectorDependencies & RemoteUrlPolicy;
 
 export class InstalledConnectorProvider implements ConnectorProvider {
+  /** Run-scoped MCP sessions, so a stateful server sees one session per run. */
+  private readonly mcpSessions = new RemoteMcpSessionCache();
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly secrets: SecretStore,
@@ -113,15 +117,41 @@ export class InstalledConnectorProvider implements ConnectorProvider {
 
   /** Decided per request from the install owner's current standing, so an install saved
    * before an ownership change cannot keep reaching private endpoints. */
-  private async remoteFor(context: AdapterContext): Promise<RemoteRequestPolicy> {
+  private async remoteFor(_context: AdapterContext): Promise<RemoteRequestPolicy> {
     return {
       ...this.remote,
-      allowPrivateEndpoint: await actorMayUsePrivateEndpoint(
-        this.prisma,
-        context.userId,
-        this.allowPrivateEndpoint,
-      ),
+      allowPrivateEndpoint: this.allowPrivateEndpoint,
     };
+  }
+
+  /** Session reuse only inside one run, lasting the run rather than one
+   * attempt; discovery and calls outside a run (settings, verification) keep
+   * one session per call. */
+  private mcpSessionOptions(
+    context: AdapterContext,
+    install: Pick<InstalledRow, "id">,
+  ): {
+    sessionScope?: string;
+    sessionPool?: RemoteMcpSessionCache;
+    sessionRunId?: string;
+  } {
+    if (!context.runId) return {};
+    return {
+      sessionScope: `${context.spaceId} ${context.userId} ${context.runId} ${install.id}`,
+      sessionPool: this.mcpSessions,
+      sessionRunId: context.runId,
+    };
+  }
+
+  /** Close the run-scoped MCP sessions of a run that ended on this worker;
+   * see `RemoteMcpSessionCache.endRun`. */
+  endRun(runId: string): void {
+    this.mcpSessions.endRun(runId);
+  }
+
+  /** Close every run-scoped MCP session; for shutdown. */
+  async close(): Promise<void> {
+    await this.mcpSessions.close();
   }
 
   describe() {
@@ -151,8 +181,7 @@ export class InstalledConnectorProvider implements ConnectorProvider {
   private async authorizedTools(context: AdapterContext): Promise<ConnectorTool[]> {
     const installs = await this.prisma.capabilityInstall.findMany({
       where: {
-        spaceId: context.spaceId,
-        userId: context.userId,
+        ...availableInSpace(context),
         kind: { in: ["mcp", "api", "graphql"] },
       },
       orderBy: { createdAt: "asc" },
@@ -188,6 +217,7 @@ export class InstalledConnectorProvider implements ConnectorProvider {
           endpoint: install.source,
           headers: connectorHeaders(config, credential),
           signal: context.signal,
+          ...this.mcpSessionOptions(context, install),
         });
         return tools.map((tool) => ({
           ...tool,
@@ -263,8 +293,7 @@ export class InstalledConnectorProvider implements ConnectorProvider {
     const install = await this.prisma.capabilityInstall.findFirst({
       where: {
         id: installId,
-        spaceId: context.spaceId,
-        userId: context.userId,
+        ...availableInSpace(context),
         kind: { in: ["mcp", "api", "graphql"] },
       },
     });
@@ -284,6 +313,7 @@ export class InstalledConnectorProvider implements ConnectorProvider {
             endpoint: install.source,
             headers: connectorHeaders(config, credential),
             signal: context.signal,
+            ...this.mcpSessionOptions(context, install),
           },
           call.route?.toolName ?? call.tool,
           call.args,
@@ -347,11 +377,7 @@ export class InstalledConnectorProvider implements ConnectorProvider {
   ): Promise<string | undefined> {
     if (!install.secretId) return undefined;
     const row = await this.prisma.secret.findFirst({
-      where: {
-        id: install.secretId,
-        spaceId: context.spaceId,
-        userId: context.userId,
-      },
+      where: { id: install.secretId, ...itemSecretIn(context) },
     });
     return row ? await this.secrets.load(row.ciphertext, row.id) : undefined;
   }
@@ -363,7 +389,7 @@ export async function verifyMcpInstall(input: {
   credential?: string;
   signal?: AbortSignal;
   remote?: RemoteConnectorDependencies;
-  /** Loopback / LAN endpoint escape: deployment owner or instance flag. */
+  /** Loopback / LAN endpoint escape: operator-configured instance flag. */
   allowPrivateEndpoint?: boolean;
 }): Promise<{ config: Record<string, unknown>; toolCount: number }> {
   assertNoSensitiveQuery(input.source);
@@ -386,7 +412,7 @@ export async function prepareApiInstall(input: {
   credential?: string;
   signal?: AbortSignal;
   remote?: RemoteConnectorDependencies;
-  /** Loopback / LAN endpoint escape: deployment owner or instance flag. */
+  /** Loopback / LAN endpoint escape: operator-configured instance flag. */
   allowPrivateEndpoint?: boolean;
 }): Promise<{ source: string; config: Record<string, unknown>; operationCount: number }> {
   const auth = AuthSchema.parse(input.config.auth);
@@ -893,7 +919,13 @@ async function executeApiOperation(
     consumed.add(key);
     if (value != null) headers[key] = String(value);
   }
-  if (operation.method === "GET" || operation.method === "DELETE") {
+  const declaredJsonBody =
+    !consumed.has("body") &&
+    !operation.queryParameters.includes("body") &&
+    Object.hasOwn(asRecord(operation.inputSchema.properties) ?? {}, "body");
+  const declaredDeleteBody =
+    operation.method === "DELETE" && args.body !== undefined && declaredJsonBody;
+  if (operation.method === "GET" || (operation.method === "DELETE" && !declaredDeleteBody)) {
     for (const [key, value] of Object.entries(args)) {
       if (consumed.has(key) || value == null) continue;
       if (Array.isArray(value)) {
@@ -914,7 +946,10 @@ async function executeApiOperation(
       }
     }
     const payload =
-      args.body ?? Object.fromEntries(Object.entries(args).filter(([key]) => !consumed.has(key)));
+      declaredJsonBody && args.body === null
+        ? null
+        : (args.body ??
+          Object.fromEntries(Object.entries(args).filter(([key]) => !consumed.has(key))));
     body = JSON.stringify(payload);
     headers["content-type"] = "application/json";
   }

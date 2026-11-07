@@ -31,12 +31,11 @@ import {
   shellQuote,
   workspacePath,
 } from "./computer-support.js";
-import {
-  PORTABLE_TRANSFER_BATCH_BYTES,
-  shouldSkipPortableWorkspaceFile,
-} from "./computer-workspace.js";
+import { PORTABLE_TRANSFER_BATCH_BYTES } from "./computer-workspace.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
+import { shellExportScript } from "./sandbox-shell-environment.js";
 import { readBodyCapped } from "./web-ssrf.js";
+import { shouldSkipPortableWorkspaceFile } from "./workspace-save-policy.js";
 
 const CREATEOS_WORKSPACE = "/home/desktop/rakazo-home";
 const CREATEOS_BROWSER_PROFILES = `${CREATEOS_WORKSPACE}/.browser-profiles`;
@@ -69,19 +68,6 @@ const MAX_ERROR_BODY_CHARS = 2_000;
 const CREATEOS_ERROR_RESPONSE_TIMEOUT_MS = 1_000;
 const CREATEOS_SUCCESS_RESPONSE_TIMEOUT_MS = 30_000;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-const BROWSER_PROFILE_DIR = ".browser-profiles";
-const BROWSER_PROFILE_CACHE_DIRS = new Set([
-  "Cache",
-  "Code Cache",
-  "CacheStorage",
-  "GPUCache",
-  "GrShaderCache",
-  "ShaderCache",
-  "Crashpad",
-  "component_crx_cache",
-  "startup_cache",
-  "cache2",
-]);
 /** Statuses CreateOS moves out of on its own. */
 const TRANSITIONAL_CREATEOS_STATUSES = new Set(["creating", "pausing", "resuming", "forking"]);
 /** Statuses from which a sandbox never runs again. */
@@ -468,6 +454,16 @@ export class CreateOSSandboxProvider implements SandboxProvider {
     return this.ref(created.id, request.botId, true);
   }
 
+  async isRunning(computer: ComputerRef, context: AdapterContext): Promise<boolean> {
+    if (computer.kind !== "createos") return false;
+    try {
+      return (await this.getSandbox(computer.providerRef, context)).status === "running";
+    } catch (error) {
+      if (isCreateOSSandboxGone(error)) return false;
+      throw error;
+    }
+  }
+
   async prepare(computer: ComputerRef, context: AdapterContext): Promise<void> {
     const profile = createosChromiumProfile(screenSessionKey(context));
     await this.executeChecked(
@@ -699,6 +695,7 @@ print(json.dumps(out))
   ): Promise<void> {
     let batchBytes = 0;
     for await (const file of files) {
+      if (shouldSkipPortableWorkspaceFile(file.path)) continue;
       if (batchBytes > PORTABLE_TRANSFER_BATCH_BYTES) batchBytes = 0;
       await this.putFile(computer, file, context);
       batchBytes += file.content.byteLength;
@@ -1106,11 +1103,18 @@ print(json.dumps(out))
       return;
     }
     if (action.kind === "scroll") {
+      if (action.direction === "left" || action.direction === "right") {
+        throw new Error("CreateOS computers can only scroll up or down");
+      }
+      // Given a point, the pointer moves there first, so the wheel scrolls what is under it.
+      if (action.x !== undefined && action.y !== undefined) {
+        await this.postJson(`${root}/mouse/move?${query}`, { x: action.x, y: action.y }, context);
+      }
       await this.postJson(
         `${root}/mouse/scroll?${query}`,
         {
           direction: action.direction,
-          amount: clampRounded(action.amount ?? 3, 1, 100),
+          amount: clampRounded(action.amount ?? 3, 1, 20),
         },
         context,
       );
@@ -1369,7 +1373,7 @@ raise SystemExit(1)
   ): AsyncIterable<PortableFile> {
     const entries = await this.listFiles(computer, directory, context);
     for (const entry of entries) {
-      if (shouldSkipCreateOSWorkspaceFile(entry.path)) continue;
+      if (shouldSkipCreateOSWorkspaceFile(entry.path, entry.kind === "dir")) continue;
       if (entry.kind === "dir") {
         yield* this.walkWorkspace(computer, entry.path, context);
       } else {
@@ -1389,7 +1393,7 @@ raise SystemExit(1)
   ): Promise<boolean> {
     const entries = await this.listFiles(computer, directory, context);
     for (const entry of entries) {
-      if (shouldSkipCreateOSWorkspaceFile(entry.path)) continue;
+      if (shouldSkipCreateOSWorkspaceFile(entry.path, entry.kind === "dir")) continue;
       if (entry.kind === "file") return true;
       if (await this.hasExportableWorkspaceFiles(computer, entry.path, context)) return true;
     }
@@ -1415,20 +1419,23 @@ raise SystemExit(1)
     timeoutMs: number,
   ): Promise<CreateOSExecResponse> {
     const cwd = createosCwd(request.cwd);
-    const env = request.env
-      ? Object.entries(request.env)
-          .map(([key, value]) => `${key}=${shellQuote(value)}`)
-          .join(" ")
-      : "";
+    // Exec's env field only takes names declared when the sandbox was created, and command text
+    // shows in `ps`, so the env travels on stdin. Loading it leaves `argv` with an empty stdin.
+    const environment = shellExportScript(request.env ?? {});
     const command = [
       `mkdir -p ${shellQuote(cwd)}`,
       `cd ${shellQuote(cwd)}`,
-      `${env ? `${env} ` : ""}${sandboxCommandArgv(request).map(shellQuote).join(" ")}`,
+      ...(environment ? ['eval "$(cat)"'] : []),
+      sandboxCommandArgv(request).map(shellQuote).join(" "),
     ].join(" && ");
     const seconds = Math.max(1, Math.ceil(timeoutMs / 1_000));
     return this.postJson<CreateOSExecResponse>(
       `/v1/sandboxes/${encodeURIComponent(computer.providerRef)}/exec`,
-      { cmd: "timeout", args: [`${seconds}s`, "bash", "-lc", command] },
+      {
+        cmd: "timeout",
+        args: [`${seconds}s`, "bash", "-lc", command],
+        ...(environment ? { stdin: environment } : {}),
+      },
       context,
       timeoutMs + 5_000,
     );
@@ -1783,15 +1790,9 @@ function isTransientCreateOSHttpStatus(status: number): boolean {
   return status === 408 || status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-function shouldSkipCreateOSWorkspaceFile(relative: string): boolean {
+function shouldSkipCreateOSWorkspaceFile(relative: string, isDirectory = false): boolean {
   if (relative === ".rakazo" || relative.startsWith(".rakazo/")) return true;
-  if (
-    relative.startsWith(`${BROWSER_PROFILE_DIR}/`) &&
-    relative.split("/").some((segment) => BROWSER_PROFILE_CACHE_DIRS.has(segment))
-  ) {
-    return true;
-  }
-  return shouldSkipPortableWorkspaceFile(relative);
+  return shouldSkipPortableWorkspaceFile(relative, isDirectory);
 }
 
 export function isAllowedCreateOSScreenUrl(resolved: URL, baseUrl: string): boolean {

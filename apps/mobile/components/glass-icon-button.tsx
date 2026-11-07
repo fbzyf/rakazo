@@ -1,8 +1,9 @@
 import type { ComponentProps } from "react";
 import type { ColorValue, StyleProp, ViewStyle } from "react-native";
-import { Pressable } from "react-native";
+import { Platform, Pressable } from "react-native";
 import { useMobileTokens } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
+import { androidRipple, withAlpha } from "../lib/ripple";
 import { GlassSurface } from "./glass-surface";
 import { NativeSymbol } from "./native-symbol";
 
@@ -22,6 +23,7 @@ export function GlassIconButton({
   color,
   tint,
   selected,
+  disabled,
   fallbackStyle,
 }: {
   testID?: string;
@@ -34,6 +36,7 @@ export function GlassIconButton({
   color?: ColorValue;
   tint?: string;
   selected?: boolean;
+  disabled?: boolean;
   fallbackStyle?: StyleProp<ViewStyle>;
 }) {
   const tokens = useMobileTokens();
@@ -55,14 +58,20 @@ export function GlassIconButton({
         testID={testID}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        accessibilityState={selected === undefined ? undefined : { selected }}
-        hitSlop={4}
+        accessibilityState={
+          selected === undefined && disabled === undefined ? undefined : { selected, disabled }
+        }
+        disabled={disabled}
+        // A small button still gets the 44-point tap target platforms recommend.
+        hitSlop={Math.max(4, (44 - size) / 2)}
+        android_ripple={androidRipple(withAlpha(iconColor, 0.14))}
         onPress={onPress}
         style={({ pressed }) => ({
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed ? 0.6 : 1,
+          ...(Platform.OS === "android" ? { borderRadius: size / 2, overflow: "hidden" } : null),
+          opacity: disabled ? 0.45 : pressed && Platform.OS !== "android" ? 0.6 : 1,
         })}
       >
         <NativeSymbol ios={ios} android={android} size={iconSize} color={iconColor} />

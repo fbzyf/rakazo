@@ -280,6 +280,19 @@ Connect OpenAI, Anthropic, Google, OpenRouter, or Vercel AI Gateway. You can als
 
 There is no seat fee for the open source software. You pay the model provider you connect and any remote computer provider you choose. Local Docker computers are the default, so a single machine does not need an E2B, Daytona, CreateOS, or Boat account.
 
+## Self-host only, for now
+
+These work on your own deployment and are not yet on Rakazo Cloud. Each turns on from \`.env\`.
+
+- **Telegram, WhatsApp, iMessage and SMS, Feishu and Lark.** Add the platform's credentials: \`TELEGRAM_BOT_TOKEN\`, \`WHATSAPP_*\`, \`SENDBLUE_*\` (iMessage and SMS), or \`LARK_*\`.
+- **Image and video generation.** \`MEDIA_GENERATION_PROVIDER=fal\`, \`MEDIA_GENERATION_API_KEY\`, and an image or video model (\`MEDIA_GENERATION_IMAGE_MODEL\`, \`MEDIA_GENERATION_VIDEO_MODEL\`).
+- **Purchases with Stripe Link.** \`PAYMENT_WALLET_PROVIDER=link\`. Each purchase waits for your approval in Link.
+- **Cursor cloud agents.** \`CLOUD_AGENT_PROVIDER=cursor\`, \`CURSOR_API_KEY\`, and \`CLOUD_AGENT_SPACE_ID\`.
+- **Ticket board.** \`TICKET_BOARD_ENABLED=true\`.
+- **Local models and local MCP servers.** \`RAKAZO_LOCAL_MODELS\`, and \`MCP_STDIO_ENABLED\` with \`MCP_STDIO_ALLOWED_COMMANDS\`.
+
+The [full guide](${DOCS_URL}) lists every setting for each one.
+
 ## Requirements
 
 Published images need Docker Engine 26 or newer (API 1.45 or newer, for bot home volume subpaths), the Compose plugin, curl, and OpenSSL. No Node.js install.
@@ -322,7 +335,7 @@ If downloads are blocked, use the [restricted-network guide](${SELF_HOST_RESTRIC
 ${SOURCE_CHECKOUT}
 \`\`\`
 
-Set \`POSTGRES_PASSWORD\` to a URI-safe random value (for example \`openssl rand -hex 16\`) and put the same value in \`DATABASE_URL\`. Set \`BETTER_AUTH_SECRET\`, \`ENCRYPTION_KEY\`, and \`SCREEN_PROXY_SECRET\` to independent long random values. Docker sandboxes also need a dedicated \`SANDBOX_SUPERVISOR_TOKEN\`. Keep these in \`.env\`, not in git.
+Set \`POSTGRES_PASSWORD\` and \`POSTGRES_APP_PASSWORD\` to two URI-safe random values (for example \`openssl rand -hex 16\`) and put them in \`DATABASE_MIGRATION_URL\` and \`DATABASE_URL\`. Set \`BETTER_AUTH_SECRET\`, \`ENCRYPTION_KEY\`, and \`SCREEN_PROXY_SECRET\` to independent long random values. Docker sandboxes also need a dedicated \`SANDBOX_SUPERVISOR_TOKEN\`. Keep these in \`.env\`, not in git.
 
 For host-side development with Docker Desktop, set \`SANDBOX_CONTROL_VIA_LOOPBACK=true\` in \`.env\`. The supervisor then publishes its control service on a loopback port, because Docker Desktop container addresses are not reachable from the host. Leave this unset when the supervisor runs inside Compose.
 
@@ -359,10 +372,11 @@ ${faqMarkdown(SELF_HOST_FAQS)}
 `;
 
 export const OPENCLAW_RELATED = [
-  { href: "/grok-bot-alternative/", label: "Grok Bot alternative" },
+  { href: "/grok-bot-alternative/", label: "Grok Bot alternatives" },
   { href: "/muse-alternative/", label: "Meta Muse" },
   { href: "/dots-alternative/", label: "OpenAI Dots" },
   { href: "/instinct-alternative/", label: "Instinct AI" },
+  { href: "/claude-duet-alternative/", label: "Claude Duet" },
   { href: "/hark-alternative/", label: "Hark Pro" },
   { href: "/hermes-alternative/", label: "Hermes Agent" },
   { href: "/alternatives/", label: "All comparisons" },

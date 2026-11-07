@@ -15,7 +15,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  BROWSER_STILL_RUNNING_EXIT,
   browserCloseProgram,
+  browserProfilePathForScreen,
   DEFAULT_DESKTOP_ENV,
   desktopControlCommand,
   desktopTerminalCommand,
@@ -27,8 +29,10 @@ import {
   quiesceBrowserProfilesCommand,
   releaseDesktopCommand,
   resetDesktopRuntimeCommand,
+  screenDisplayArgv,
   screenPorts,
   shellQuote,
+  stopBrowserProfileCommand,
   stopExtraScreenCommand,
   terminalCommand,
 } from "./desktop-runtime.js";
@@ -112,6 +116,94 @@ function fixture() {
 }
 
 describe("shared Linux desktop lifecycle", () => {
+  it("defaults to a loopback gateway without environment options", () => {
+    expect(ensureScreenCommand(0, "bot", "view")).toContain("127.0.0.1:6080 8>&-");
+    expect(interactiveScreenCommand(true, "control")).toContain("127.0.0.1:6080 8>&-");
+    expect(terminalCommand("control", "terminal", "/work")).toContain("127.0.0.1:6080 8>&-");
+  });
+
+  it.each([undefined, "127.0.0.1", "localhost", "192.0.2.10", "0.0.0.0"])(
+    "binds and identifies the configured gateway (%s)",
+    (bindHost) => {
+      const environment = { ...env, bindHost };
+      const host = bindHost ?? "127.0.0.1";
+      const command = terminalCommand("control", "terminal", "/work", environment);
+      expect(command).toContain(`--token-source=/tmp/rakazo/desktop-targets ${host}:6100 8>&-`);
+      const pattern = command.match(/if ! pgrep -f '([^']+)'/)?.[1];
+      expect(pattern).toBeDefined();
+      const process = (address: string, source = "desktop-targets") =>
+        `/usr/bin/python3 /usr/bin/websockify --token-source=/tmp/rakazo/${source} ${address}:6100`;
+      expect(process(host)).toMatch(new RegExp(pattern!));
+      expect(process("192x0x2x10")).not.toMatch(new RegExp(pattern!));
+      expect(process(host, "view-target-1")).not.toMatch(new RegExp(pattern!));
+      if (host !== "0.0.0.0") expect(process("0.0.0.0")).not.toMatch(new RegExp(pattern!));
+      // Retirement still matches older wildcard listeners, including single-screen images.
+      const retirement = command.match(/pkill -f '([^']*websockify[^']*)'/)?.[1];
+      expect(retirement).toBeDefined();
+      expect(process("0.0.0.0", "view-target-1")).toMatch(new RegExp(retirement!));
+      expect(process("0.0.0.0")).toMatch(new RegExp(retirement!));
+      expect(command).toContain(`/dev/tcp/${host === "0.0.0.0" ? "127.0.0.1" : host}/6100`);
+      expect(ensureScreenCommand(0, "bot", "view", environment)).toContain(`${host}:6100 8>&-`);
+      expect(interactiveScreenCommand(true, "control", screenPorts(0, environment))).toContain(
+        `${host}:6100 8>&-`,
+      );
+    },
+  );
+
+  it("binds IPv6 computer gateways and probes IPv6 loopback", () => {
+    const command = terminalCommand("control", "terminal", "/work", { ...env, bindHost: "::" });
+    expect(command).toContain("--token-source=/tmp/rakazo/desktop-targets :::6100 8>&-");
+    expect(command).toContain("/dev/tcp/::1/6100");
+  });
+
+  it.each([
+    "",
+    "example.test",
+    "256.1.1.1",
+    "127.1",
+    "::1",
+    "127.0.0.1; touch /tmp/injected",
+    "localhost\n",
+  ])("rejects invalid gateway hosts (%j)", (bindHost) => {
+    const environment = { ...env, bindHost };
+    expect(() => ensureScreenCommand(0, "bot", "view", environment)).toThrow(
+      "invalid screen gateway bind host",
+    );
+    expect(() => terminalCommand("control", "terminal", "/work", environment)).toThrow(
+      "invalid screen gateway bind host",
+    );
+    expect(() =>
+      interactiveScreenCommand(true, "control", { ...screenPorts(0), bindHost }),
+    ).toThrow("invalid screen gateway bind host");
+  });
+
+  it("runs a bot's commands on its own assigned display", () => {
+    const f = fixture();
+    f.ensure("becky");
+    f.ensure("beto");
+    const run = (bot: string, argv: string[]) => {
+      const [program, ...args] = screenDisplayArgv(argv, bot, env.displayStart).map((word) =>
+        word.replaceAll("/tmp/rakazo/desktop-assignments", f.root),
+      );
+      return spawnSync(program ?? "", args, {
+        encoding: "utf8",
+        env: { PATH: process.env.PATH, DISPLAY: ":1" },
+      });
+    };
+    const printDisplay = ["sh", "-c", 'printf "%s|%s" "$DISPLAY" "$1"', "sh", "a b'c $HOME"];
+
+    expect(run("becky", printDisplay).stdout).toBe(":20|a b'c $HOME");
+    expect(run("beto", printDisplay).stdout).toBe(":21|a b'c $HOME");
+    // No screen yet: the command keeps the display it inherited.
+    expect(run("tori", printDisplay).stdout).toBe(":1|a b'c $HOME");
+    writeFileSync(
+      path.join(f.root, `${createHash("sha256").update("bad").digest("hex").slice(0, 32)}.slot`),
+      "x;1\n",
+    );
+    expect(run("bad", printDisplay).stdout).toBe(":1|a b'c $HOME");
+    expect(run("beto", ["sh", "-c", "exit 7"]).status).toBe(7);
+  });
+
   it("allocates live slots past 1000 bots, keeps assignments across callers, and rejects stale leases", () => {
     const f = fixture();
     expect(f.ensure("a").stdout).toContain("RAKAZO_DESKTOP=0:view-a");
@@ -207,6 +299,18 @@ describe("shared Linux desktop lifecycle", () => {
     expect(readFileSync(path.join(f.root, slot), "utf8")).toContain("new:2");
   });
 
+  it("keeps a completed run's display for that bot's next run and rejects its stale fence", () => {
+    const f = fixture();
+    expect(f.ensure("a", "run:1").stdout).toContain("RAKAZO_DESKTOP=0:view-a");
+    expect(f.run(desktopControlCommand("a", "run:1", env, false)).status).toBe(0);
+    const slot = readdirSync(f.root).find((name) => name.endsWith(".slot"))!;
+    expect(readFileSync(path.join(f.root, slot), "utf8")).toBe("0\nrun:1\nview-a\n");
+    expect(f.ensure("b").stdout).toContain("RAKAZO_DESKTOP=1:view-b");
+    expect(f.ensure("a", "next:2").stdout).toContain("RAKAZO_DESKTOP=0:view-a");
+    expect(f.run(desktopControlCommand("a", "run:1", env, false)).status).toBe(75);
+    expect(f.release("a", "run:1").status).toBe(75);
+  });
+
   it("opens a terminal only on an assigned display under the current lease", () => {
     const f = fixture();
     expect(f.run(desktopTerminalCommand("missing", "run:1", env, "c", "t", ".")).status).toBe(75);
@@ -231,6 +335,8 @@ describe("shared Linux desktop lifecycle", () => {
     const execAt = lines.findIndex((line) => line.startsWith("exec "));
     expect(unsetAt).toBeGreaterThan(-1);
     expect(execAt).toBeGreaterThan(unsetAt);
+    // A relaunch keeps the bot's tabs and session cookies, matching rakazo-browser.
+    expect(lines[execAt]).toContain("--restore-last-session");
   });
 
   it.each([false, true])(
@@ -501,7 +607,6 @@ describe("shared Linux desktop lifecycle", () => {
           workspaceDir: home,
           browserProfilesDir: profiles,
         }).replaceAll("/tmp/rakazo", path.join(root, "runtime"));
-        expect(command).toContain("Browser.close");
         waitForReady(joinedReady);
         const result = spawnSync("bash", ["-eu", "-c", command], {
           encoding: "utf8",
@@ -538,6 +643,161 @@ describe("shared Linux desktop lifecycle", () => {
             child.kill("SIGKILL");
           }
         }
+      }
+    },
+  );
+
+  it.skipIf(process.platform !== "linux").each(["replacement", "unclosed"])(
+    "preserves lock state and fails when a %s browser survives shutdown",
+    (mode) => {
+      const root = mkdtempSync(path.join(tmpdir(), "desktop-stop-"));
+      roots.push(root);
+      const profile = path.join(root, "profile with spaces");
+      const pidFile = path.join(root, "browser-pid");
+      const replacementPidFile = path.join(root, "replacement-pid");
+      const ready = path.join(root, "ready");
+      const sleeper = path.join(root, "browser.py");
+      const python = spawnSync("python3", ["-c", "import sys; print(sys.executable)"], {
+        encoding: "utf8",
+      }).stdout.trim();
+      mkdirSync(profile);
+      const locks = ["SingletonLock", "SingletonCookie", "SingletonSocket"];
+      for (const lock of locks) writeFileSync(path.join(profile, lock), "keep");
+      writeFileSync(
+        sleeper,
+        `import time\nopen(${JSON.stringify(ready)}, "w").write("ready")\ntime.sleep(120)\n`,
+      );
+      const child = spawn(
+        python,
+        [sleeper, `--user-data-dir=${profile}`, "--remote-debugging-port=9336"],
+        { stdio: "ignore", detached: true },
+      );
+      try {
+        waitForReady(ready);
+        writeFileSync(pidFile, String(child.pid));
+        const close =
+          mode === "replacement"
+            ? [
+                "python3() {",
+                `  rm -f ${shellQuote(ready)}`,
+                `  ${shellQuote(python)} ${shellQuote(sleeper)} ${shellQuote(`--user-data-dir=${profile}`)} --remote-debugging-port=9337 </dev/null >/dev/null 2>&1 &`,
+                `  printf %s "$!" >${shellQuote(replacementPidFile)}`,
+                `  for attempt in $(seq 1 100); do [ -s ${shellQuote(ready)} ] && break; sleep 0.01; done`,
+                `  [ -s ${shellQuote(ready)} ] || return 1`,
+                '  kill "$3"',
+                "}",
+              ].join("\n")
+            : "python3() { return 1; }; kill() { return 0; }; sleep() { :; }";
+        const result = spawnSync(
+          "bash",
+          ["-eu", "-c", `${close}\n${stopBrowserProfileCommand(profile, shellQuote(pidFile))}`],
+          { encoding: "utf8", timeout: 20_000 },
+        );
+        expect(result.status, result.stderr).toBe(BROWSER_STILL_RUNNING_EXIT);
+        expect(result.stderr).toContain("browser still running");
+        for (const lock of locks) {
+          expect(readFileSync(path.join(profile, lock), "utf8")).toBe("keep");
+        }
+        expect(readFileSync(pidFile, "utf8")).not.toBe("");
+        const survivingPid =
+          mode === "replacement" ? Number(readFileSync(replacementPidFile, "utf8")) : child.pid;
+        expect(survivingPid).toBeGreaterThan(0);
+        if (!survivingPid) throw new Error("expected surviving browser PID");
+        expect(() => process.kill(survivingPid, 0)).not.toThrow();
+      } finally {
+        child.kill("SIGKILL");
+        try {
+          const pid = Number(readFileSync(replacementPidFile, "utf8"));
+          if (Number.isSafeInteger(pid) && pid > 0) process.kill(pid, "SIGKILL");
+        } catch {
+          // The close command may fail before starting a replacement.
+        }
+      }
+    },
+  );
+
+  it.skipIf(process.platform !== "linux")(
+    "starts the screen browser again when the one it found exits before its port answers",
+    () => {
+      const root = mkdtempSync(path.join(tmpdir(), "desktop-ensure-"));
+      roots.push(root);
+      const bin = path.join(root, "bin");
+      const launches = path.join(root, "launches");
+      const ready = path.join(root, "ready");
+      mkdirSync(bin);
+      const screenEnv = {
+        ...env,
+        browserProfilesDir: path.join(root, "profiles"),
+        displayStart: 31_000,
+        preservePrimaryDisplay: true,
+      };
+      const { debugPort } = screenPorts(0, screenEnv);
+      writeFileSync(
+        path.join(bin, "rakazo-browser"),
+        [
+          "#!/usr/bin/env python3",
+          "import os, socket, sys, time",
+          `open(${JSON.stringify(launches)}, "a").write("launch\\n")`,
+          "server = socket.socket()",
+          "server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)",
+          `server.bind(("127.0.0.1", ${debugPort}))`,
+          "server.listen()",
+          "time.sleep(60)",
+          "",
+        ].join("\n"),
+      );
+      chmodSync(path.join(bin, "rakazo-browser"), 0o755);
+      const command = ensureScreenCommand(0, "bot", "token", screenEnv)
+        .replaceAll("/tmp/rakazo", path.join(root, "runtime"))
+        .replaceAll("/usr/share/novnc", root);
+      const cdpChecked = command.indexOf("\nfi\n", command.indexOf("CDP not ready")) + 4;
+      const profile = browserProfilePathForScreen("bot", screenEnv);
+      mkdirSync(profile, { recursive: true });
+      const closing = spawn(
+        "python3",
+        [
+          "-c",
+          'import os, time; open(os.environ["READY"], "w").write("ready"); time.sleep(1.5)',
+          `--user-data-dir=${profile}`,
+          `--remote-debugging-port=${debugPort}`,
+        ],
+        { stdio: "ignore", detached: true, env: { ...process.env, READY: ready } },
+      );
+      try {
+        waitForReady(ready);
+        const result = spawnSync(
+          "bash",
+          [
+            "-eu",
+            "-c",
+            [
+              "xdpyinfo() { return 0; }",
+              "command() { return 0; }",
+              command.slice(0, cdpChecked),
+              "echo cdp-ready",
+            ].join("\n"),
+          ],
+          {
+            encoding: "utf8",
+            timeout: 20_000,
+            env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` },
+          },
+        );
+        expect(result.stdout, result.stderr).toContain("cdp-ready");
+        expect(readFileSync(launches, "utf8")).toBe("launch\n");
+      } finally {
+        closing.kill("SIGKILL");
+        const browser = Number(
+          readFileSync(
+            path.join(
+              root,
+              "runtime",
+              `browser-pid-${createHash("sha256").update("bot").digest("hex").slice(0, 32)}`,
+            ),
+            "utf8",
+          ),
+        );
+        if (Number.isSafeInteger(browser) && browser > 0) process.kill(browser, "SIGKILL");
       }
     },
   );

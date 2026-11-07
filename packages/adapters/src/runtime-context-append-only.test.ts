@@ -203,17 +203,17 @@ function rewrites(sent: Context[]): number[] {
 }
 
 const toolHeavyRun: Step[] = [
-  { tool: "shell", text: `first log line ${"synthetic shell output ".repeat(150)}` },
+  { tool: "shell", text: `first log line ${"synthetic shell output ".repeat(500)}` },
   { tool: "browser_snapshot", text: `page one ${"node ".repeat(400)}` },
   { tool: "computer_observe", screenshot: true },
-  { tool: "shell", text: "synthetic shell output ".repeat(150) },
+  { tool: "shell", text: "synthetic shell output ".repeat(500) },
   { tool: "browser_snapshot", text: `page two ${"node ".repeat(400)}` },
   { tool: "computer_observe", screenshot: true },
   { steer: "Also check the second dashboard" },
   { tool: "browser_snapshot", text: `page three ${"node ".repeat(400)}` },
   { tool: "computer_observe", screenshot: true },
   { tool: "browser_snapshot", text: `page four ${"node ".repeat(400)}` },
-  { tool: "shell", text: "synthetic shell output ".repeat(150) },
+  { tool: "shell", text: "synthetic shell output ".repeat(500) },
   { tool: "computer_observe", screenshot: true },
   { tool: "browser_snapshot", text: `page five ${"node ".repeat(400)}` },
 ];
@@ -283,7 +283,7 @@ describe("append-only run transcript", () => {
     });
     const steps: Step[] = Array.from({ length: 30 }, (_, index) => ({
       tool: "shell",
-      text: `output ${index} ${"synthetic shell output ".repeat(130)}`,
+      text: `output ${index} ${"synthetic shell output ".repeat(433)}`,
     }));
     const sent = simulateRun(input, steps);
     const rebuilt = rewrites(sent);
@@ -307,7 +307,7 @@ describe("append-only run transcript", () => {
       { tool: "shell", text: "short" },
       ...Array.from({ length: 16 }, (_, index) => ({
         tool: "shell" as const,
-        text: `output ${index} ${"synthetic shell output ".repeat(130)}`,
+        text: `output ${index} ${"synthetic shell output ".repeat(433)}`,
       })),
     ];
     const sent = simulateRun(input, steps);
@@ -461,10 +461,10 @@ describe("append-only run transcript boundaries", () => {
     expect(rebuildPaysOff(kept, fresh, 31_996, 3)).toBe(false);
   });
 
-  it("rebuilds once sixteen stale images could be dropped, not at fifteen", () => {
+  it("rebuilds once eight stale images could be dropped, not at seven", () => {
     const fresh = { tokens: 1_000, images: 2 };
-    expect(rebuildPaysOff({ tokens: 1_000, images: 17 }, fresh, 1_000, 0)).toBe(false);
-    expect(rebuildPaysOff({ tokens: 1_000, images: 18 }, fresh, 1_000, 0)).toBe(true);
+    expect(rebuildPaysOff({ tokens: 1_000, images: 9 }, fresh, 1_000, 0)).toBe(false);
+    expect(rebuildPaysOff({ tokens: 1_000, images: 10 }, fresh, 1_000, 0)).toBe(true);
   });
 
   it("never rebuilds when the rebuilt transcript would be larger", () => {
@@ -476,7 +476,7 @@ describe("append-only run transcript boundaries", () => {
   it("appends at exactly the available budget and rebuilds one token over it", () => {
     const outcome = (headroom: number) => {
       const run = driver(request({ contextStrategy: "retrieval" }, 0));
-      run.act(run.send(), "a", `old ${"x".repeat(5_000)}`);
+      run.act(run.send(), "a", `old ${"0".repeat(5_000)}`);
       const first = run.send();
       run.act(first, "b", "ok");
       const appendedSize = size({
@@ -495,16 +495,20 @@ describe("append-only run transcript boundaries", () => {
 
   it("adds the after-use note only on rebuild, then preserves it exactly once", () => {
     const run = driver(request({ contextStrategy: "retrieval" }, 0));
-    run.act(run.send(), "a", `old ${"x".repeat(5_000)}`);
+    run.act(run.send(), "a", `old ${"0".repeat(5_000)}`);
     const first = run.send();
     run.act(first, "b", "ok");
     const second = run.send();
     expect(extendsPrevious(first, second)).toBe(true);
     expect(JSON.stringify(second)).not.toContain("Earlier result shortened after you read it");
 
-    // Force a rebuild by changing instructions after the result has been read.
+    run.act(second, "c", "ok");
+    run.act(run.send(), "d", "ok");
+    run.send();
+
+    // Force a rebuild whose evidence budget cannot retain the oldest result.
     run.state.systemPrompt = "Changed instructions";
-    const rebuilt = run.send();
+    const rebuilt = run.send(undefined, { ...model, contextWindow: 7000, maxTokens: 1024 });
     const result = rebuilt.messages.find(
       (message) => message.role === "toolResult" && message.toolCallId === "a",
     );
@@ -512,7 +516,7 @@ describe("append-only run transcript boundaries", () => {
     expect(serialized.split("Earlier result shortened after you read it")).toHaveLength(2);
     expect(serialized).not.toContain("unavailable");
     expect(staleThinking(rebuilt)).toEqual([]);
-    run.act(rebuilt, "c", "ok");
+    run.act(rebuilt, "e", "ok");
     const next = run.send();
     expect(extendsPrevious(rebuilt, next)).toBe(true);
     expect(
@@ -540,7 +544,7 @@ describe("append-only run transcript boundaries", () => {
     const steps: Step[] = Array.from({ length: 25 }, (_, index) =>
       index % 2
         ? { tool: "computer_observe", screenshot: true }
-        : { tool: "shell", text: `output ${index} ${"synthetic shell output ".repeat(150)}` },
+        : { tool: "shell", text: `output ${index} ${"synthetic shell output ".repeat(500)}` },
     );
     const sent = simulateRun(input, steps);
     expect(Math.max(...sent.map(imageCount))).toBeLessThanOrEqual(5);
@@ -558,7 +562,7 @@ describe("append-only run transcript boundaries", () => {
     );
     const steps: Step[] = Array.from({ length: 12 }, (_, index) => ({
       tool: "shell",
-      text: `output ${index} ${"synthetic shell output ".repeat(150)}`,
+      text: `output ${index} ${"synthetic shell output ".repeat(500)}`,
     }));
     const sent = simulateRun(input, steps);
     expect(Math.max(...sent.map(size))).toBeGreaterThan(20_000);
@@ -573,7 +577,7 @@ describe("append-only run transcript boundaries", () => {
     });
     const steps: Step[] = Array.from({ length: 30 }, (_, index) => ({
       tool: "shell",
-      text: `output ${index} ${"synthetic shell output ".repeat(130)}`,
+      text: `output ${index} ${"synthetic shell output ".repeat(433)}`,
     }));
     const sent = simulateRun(input, steps);
     const rebuilt = rewrites(sent);
@@ -589,14 +593,14 @@ describe("append-only run transcript boundaries", () => {
     const input = request(
       {
         contextStrategy: "retrieval",
-        prompt: `Current objective ${"p".repeat(Math.floor(available * 0.8))}`,
+        prompt: `Current objective ${"0".repeat(Math.floor(available * 0.8))}`,
         model: { provider: "synthetic-provider", id: "synthetic-model", contextWindow: window },
       },
       0,
     );
     const steps: Step[] = Array.from({ length: 4 }, (_, index) => ({
       tool: "shell",
-      text: `output ${index} ${"x".repeat(4_000)}`,
+      text: `output ${index} ${"0".repeat(4_000)}`,
     }));
     const sent = simulateRun(input, steps);
     expect(rewrites(sent).length).toBeGreaterThan(0);
@@ -606,6 +610,45 @@ describe("append-only run transcript boundaries", () => {
       expect(JSON.stringify(context)).toContain("Current objective");
     }
   });
+
+  it.each(["retrieval", "snapshots"] as const)(
+    "keeps the unread tool step after steering forces a %s window rebuild",
+    (contextStrategy) => {
+      const window = 40_000;
+      const run = driver(
+        request(
+          {
+            contextStrategy,
+            model: { provider: "synthetic-provider", id: "synthetic-model", contextWindow: window },
+          },
+          contextStrategy === "snapshots" ? 30 : 0,
+        ),
+      );
+      const previous = run.send();
+      run.act(previous, "pending", "huge ".repeat(30_000));
+      run.messages.push({ role: "user", content: "Also check the summary", timestamp: 4 });
+      expect(size({ ...previous, messages: run.messages })).toBeGreaterThan(window);
+      const next = run.send();
+      expect(size(next)).toBeLessThanOrEqual(window - model.maxTokens);
+      expect(
+        next.messages.find((message) => message.role === "assistant")?.content ?? [],
+      ).toContainEqual({
+        type: "toolCall",
+        id: "pending",
+        name: "shell",
+        arguments: {},
+      });
+      const result = next.messages.find((message) => message.role === "toolResult");
+      expect(result).toMatchObject({ toolCallId: "pending" });
+      expect(JSON.stringify(result?.content)).toContain("Tool result truncated");
+      expect(JSON.stringify(result?.content)).not.toContain("Earlier result shortened");
+      expect(next.messages.at(-1)).toMatchObject({
+        role: "user",
+        content: "Also check the summary",
+      });
+      expect(staleThinking(next)).toEqual([]);
+    },
+  );
 
   it("rebuilds when the newest result alone overflows the window", () => {
     const window = 40_000;
@@ -618,7 +661,7 @@ describe("append-only run transcript boundaries", () => {
     );
     const sent = simulateRun(input, [
       { tool: "shell", text: "small" },
-      { tool: "shell", text: `huge ${"x".repeat(60_000)}` },
+      { tool: "shell", text: `huge ${"0".repeat(60_000)}` },
     ]);
     const last = sent.at(-1)!;
     expect(size(last)).toBeLessThanOrEqual(window - model.maxTokens);
@@ -700,15 +743,15 @@ describe("append-only run transcript boundaries", () => {
     for (const context of sent) expect(staleThinking(context)).toEqual([]);
   });
 
-  it("rebuilds an unlimited run once sixteen stale screenshots could be dropped", () => {
+  it("rebuilds an unlimited run once eight stale screenshots could be dropped", () => {
     const input = request({ contextStrategy: "retrieval" }, 0);
     const steps: Step[] = Array.from({ length: 24 }, () => ({
       tool: "computer_observe",
       screenshot: true,
     }));
     const sent = simulateRun(input, steps);
-    expect(Math.max(...sent.map(imageCount))).toBe(17);
-    expect(rewrites(sent)).toEqual([18]);
-    expect(imageCount(sent[18]!)).toBe(2);
+    expect(Math.max(...sent.map(imageCount))).toBe(9);
+    expect(rewrites(sent)).toEqual([10, 18]);
+    expect(imageCount(sent[10]!)).toBe(2);
   });
 });

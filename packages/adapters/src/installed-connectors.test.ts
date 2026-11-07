@@ -14,7 +14,7 @@ import {
   verifyMcpInstall,
 } from "./installed-connectors.js";
 import { parseConnectorToolArgs, SELECTED_SCHEMA_MAX_BYTES } from "./lazy-tool-catalog.js";
-import { parametersFor } from "./pi-runtime.js";
+import { parametersFor } from "./pi-runtime-tool-parameters.js";
 
 describe("OpenAPI connector import", () => {
   it("uses the bounded catalog for a real large installed OpenAPI source", async () => {
@@ -1521,6 +1521,279 @@ describe("OpenAPI connector import", () => {
   });
 });
 
+describe("installed MCP sessions last for a whole run", () => {
+  const publicResolver = async () => [{ address: "203.0.113.10", family: 4 as const }];
+
+  /** Streamable HTTP server that keeps its state per mcp-session-id, like a
+   * stateful executor: `pause` stores a paused execution under the calling
+   * session and `resume` only knows it in that same session. */
+  function statefulMcpServer() {
+    const sessions = new Set<string>();
+    const paused = new Map<string, string>();
+    const toolCalls: Array<{ session: string | null; tool: string; args: unknown }> = [];
+    const deletes: Array<string | null> = [];
+    let initializations = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const session = request.headers.get("mcp-session-id");
+      if (request.method === "GET") return new Response(null, { status: 405 });
+      if (request.method === "DELETE") {
+        deletes.push(session);
+        if (session) sessions.delete(session);
+        return new Response(null, { status: 202 });
+      }
+      if (request.method !== "POST") return new Response(null, { status: 405 });
+      const message = JSON.parse(await request.text()) as {
+        id?: number;
+        method?: string;
+        params?: { name?: string; arguments?: Record<string, unknown> };
+      };
+      if (message.method === "initialize") {
+        initializations += 1;
+        const id = `session-${initializations}`;
+        sessions.add(id);
+        return Response.json(
+          {
+            jsonrpc: "2.0",
+            id: message.id,
+            result: {
+              protocolVersion: "2025-11-25",
+              capabilities: { tools: {} },
+              serverInfo: { name: "stateful", version: "1" },
+            },
+          },
+          { headers: { "mcp-session-id": id } },
+        );
+      }
+      if (!session || !sessions.has(session)) return new Response(null, { status: 404 });
+      if (message.id === undefined) return new Response(null, { status: 202 });
+      if (message.method === "tools/list") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: message.id,
+          result: {
+            tools: [
+              { name: "pause", inputSchema: { type: "object" } },
+              { name: "resume", inputSchema: { type: "object" } },
+            ],
+          },
+        });
+      }
+      if (message.method === "tools/call") {
+        const tool = message.params?.name ?? "";
+        toolCalls.push({ session, tool, args: message.params?.arguments });
+        if (tool === "pause") {
+          const executionId = `exec-of-${session}`;
+          paused.set(session, executionId);
+          return Response.json({
+            jsonrpc: "2.0",
+            id: message.id,
+            result: {
+              content: [{ type: "text", text: "waiting for interaction" }],
+              structuredContent: { status: "waiting_for_interaction", executionId },
+            },
+          });
+        }
+        if (tool === "resume") {
+          const expected = paused.get(session);
+          if (expected !== message.params?.arguments?.executionId) {
+            return Response.json({
+              jsonrpc: "2.0",
+              id: message.id,
+              error: {
+                code: -32000,
+                message: `Paused execution is unknown: ${String(
+                  message.params?.arguments?.executionId,
+                )}`,
+              },
+            });
+          }
+          paused.delete(session);
+          return Response.json({
+            jsonrpc: "2.0",
+            id: message.id,
+            result: { content: [{ type: "text", text: "resumed" }] },
+          });
+        }
+      }
+      return new Response(null, { status: 202 });
+    });
+    const install = {
+      id: "mcp-stateful",
+      kind: "mcp",
+      name: "Stateful MCP",
+      source: "https://mcp.example.test/mcp",
+      secretId: null,
+      createdAt: new Date(0),
+      config: { preset: "custom", auth: { type: "none" } },
+    };
+    return {
+      fetch,
+      install,
+      initializations: () => initializations,
+      toolCalls,
+      deletes,
+    };
+  }
+
+  function providerFor(server: ReturnType<typeof statefulMcpServer>) {
+    const prisma = {
+      capabilityInstall: { findFirst: vi.fn().mockResolvedValue(server.install) },
+    };
+    return new InstalledConnectorProvider(prisma as never, {} as never, {
+      fetch: server.fetch as unknown as typeof globalThis.fetch,
+      resolveHostname: publicResolver,
+    });
+  }
+
+  function runContext(runId: string) {
+    const controller = new AbortController();
+    const context = {
+      spaceId: "space-1",
+      userId: "user-1",
+      runId,
+      signal: controller.signal,
+    } as never;
+    return { context, controller };
+  }
+
+  async function callTool(
+    provider: InstalledConnectorProvider,
+    context: never,
+    tool: string,
+    args: Record<string, unknown>,
+  ): Promise<Array<{ type: string; data?: unknown; message?: string }>> {
+    const events: Array<{ type: string; data?: unknown; message?: string }> = [];
+    for await (const event of provider.execute(
+      {
+        tool,
+        args,
+        executionId: tool,
+        route: { connectorId: "installed", resourceId: "mcp-stateful", toolName: tool },
+      },
+      context,
+    )) {
+      events.push(event as never);
+    }
+    return events;
+  }
+
+  function pausedExecutionId(events: Array<{ type: string; data?: unknown }>): string {
+    const data = events[0] as { data: { structuredContent: { executionId: string } } };
+    return data.data.structuredContent.executionId;
+  }
+
+  it("keeps one session across a run's pause and resume calls", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    const { context } = runContext("run-1");
+
+    const pause = await callTool(provider, context, "pause", {});
+    expect(pause).toMatchObject([{ type: "result" }]);
+    const executionId = pausedExecutionId(pause);
+
+    const resume = await callTool(provider, context, "resume", { executionId });
+
+    expect(resume).toMatchObject([{ type: "result" }]);
+    expect(server.initializations()).toBe(1);
+  });
+
+  it("reuses the session on a run's next attempt after it waited for input", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    // One attempt is one continueRun pass: its own signal, the same run scope.
+    const waiting = runContext("run-1");
+    const pause = await callTool(provider, waiting.context, "pause", {});
+    const executionId = pausedExecutionId(pause);
+
+    // The run waits for the owner's answer (waiting_input), then the same run
+    // continues in this process with a fresh attempt and a fresh signal.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const resumed = runContext("run-1");
+
+    const resume = await callTool(provider, resumed.context, "resume", { executionId });
+
+    expect(resume).toMatchObject([{ type: "result" }]);
+    expect(server.initializations()).toBe(1);
+  });
+
+  it("does not share a session between two runs", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    const first = runContext("run-1");
+    const second = runContext("run-2");
+
+    const pause = await callTool(provider, first.context, "pause", {});
+    const executionId = pausedExecutionId(pause);
+
+    await expect(
+      callTool(provider, second.context, "resume", { executionId }),
+    ).resolves.toMatchObject([{ type: "error", message: /Paused execution is unknown/ }]);
+    expect(new Set(server.toolCalls.map((call) => call.session))).toEqual(
+      new Set(["session-1", "session-2"]),
+    );
+  });
+
+  it("keeps the session when an attempt aborts, so the run's next attempt reuses it", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    // One attempt is one continueRun pass: its own signal, the same run scope.
+    const waiting = runContext("run-1");
+    const pause = await callTool(provider, waiting.context, "pause", {});
+    const executionId = pausedExecutionId(pause);
+
+    // The run waits for the owner's answer; withRuntimeCleanup aborts this
+    // attempt's signal on the way out, which must not close the run's session.
+    waiting.controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(server.deletes).toEqual([]);
+
+    const resumed = runContext("run-1");
+    const resume = await callTool(provider, resumed.context, "resume", { executionId });
+
+    expect(resume).toMatchObject([{ type: "result" }]);
+    expect(server.initializations()).toBe(1);
+  });
+
+  it("closes the session when its run ends, and only that run's", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    const first = runContext("run-1");
+    await callTool(provider, first.context, "pause", {});
+    const second = runContext("run-2");
+    const executionId = pausedExecutionId(await callTool(provider, second.context, "pause", {}));
+
+    provider.endRun("run-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(server.deletes).toEqual(["session-1"]);
+    const resume = await callTool(provider, second.context, "resume", { executionId });
+    expect(resume).toMatchObject([{ type: "result" }]);
+    expect(server.initializations()).toBe(2);
+    await provider.close();
+  });
+
+  it("keeps the session after a JSON-RPC error response with code -32000", async () => {
+    const server = statefulMcpServer();
+    const provider = providerFor(server);
+    const { context } = runContext("run-1");
+
+    const pause = await callTool(provider, context, "pause", {});
+    const executionId = pausedExecutionId(pause);
+    // A recoverable server error between pause and resume, answered in a normal
+    // JSON-RPC error response: the connection itself is still healthy.
+    await expect(
+      callTool(provider, context, "resume", { executionId: "other" }),
+    ).resolves.toMatchObject([{ type: "error", message: /Paused execution is unknown/ }]);
+    expect(server.deletes).toEqual([]);
+
+    const resume = await callTool(provider, context, "resume", { executionId });
+
+    expect(resume).toMatchObject([{ type: "result" }]);
+    expect(server.initializations()).toBe(1);
+  });
+});
+
 describe("private installed connectors", () => {
   const LOCAL_API = "http://127.0.0.1:4000";
   const config = {
@@ -1537,7 +1810,7 @@ describe("private installed connectors", () => {
     ).resolves.toMatchObject({ source: LOCAL_API, operationCount: 1 });
   });
 
-  it("checks the install owner's current standing on every call", async () => {
+  it("requires operator configuration on every call regardless of stored owner", async () => {
     const install = {
       id: "api-local",
       kind: "api",
@@ -1575,9 +1848,7 @@ describe("private installed connectors", () => {
       return events;
     };
 
-    await expect(execute("owner-1")).resolves.toEqual([
-      { type: "result", data: { status: 200, data: { items: [] } } },
-    ]);
+    await expect(execute("owner-1")).resolves.toMatchObject([{ type: "error" }]);
     await expect(execute("member-1")).resolves.toEqual([
       { type: "error", message: "Connector URL must use HTTPS" },
     ]);
@@ -1585,6 +1856,98 @@ describe("private installed connectors", () => {
     // Installed while this user owned the deployment: no longer reachable after the change.
     deployment.ownerUserId = "member-1";
     await expect(execute("owner-1")).resolves.toMatchObject([{ type: "error" }]);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("declared JSON request bodies", () => {
+  it.each([
+    ["DELETE", true, { body: { ids: ["item-1"] } }, '{"ids":["item-1"]}', "?dryRun=true"],
+    ["DELETE", true, { body: null }, "null", "?dryRun=true"],
+    ["POST", true, { body: null }, "null", "?dryRun=true"],
+    ["DELETE", "query", { body: "legacy" }, undefined, "?dryRun=true&body=legacy"],
+    ["DELETE", "header", { body: "legacy" }, undefined, "?dryRun=true"],
+    ["DELETE", false, { body: { ids: ["item-1"] } }, undefined, "?dryRun=true"],
+    ["POST", "query", { body: null }, "{}", "?dryRun=true"],
+    ["DELETE", true, {}, undefined, "?dryRun=true"],
+    ["POST", true, { title: "legacy" }, '{"title":"legacy"}', "?dryRun=true"],
+  ] as const)(
+    "preserves %s bodies (declared: %s, args: %j)",
+    async (method, declared, supplied, body, query) => {
+      const imported = importOpenApiDocument({
+        openapi: "3.1.0",
+        servers: [{ url: "https://93.184.216.34/v1" }],
+        paths: {
+          "/items/{itemId}": {
+            [method.toLowerCase()]: {
+              operationId: "changeItems",
+              parameters: [
+                { name: "itemId", in: "path", required: true, schema: { type: "string" } },
+                { name: "dryRun", in: "query", schema: { type: "boolean" } },
+                { name: "If-Match", in: "header", schema: { type: "string" } },
+                ...(typeof declared === "string"
+                  ? [{ name: "body", in: declared, schema: { type: ["string", "null"] } }]
+                  : []),
+              ],
+              ...(declared === true
+                ? {
+                    requestBody: {
+                      content: {
+                        "application/json": {
+                          schema: {
+                            type: ["object", "null"],
+                            properties: { ids: { type: "array", items: { type: "string" } } },
+                          },
+                        },
+                      },
+                    },
+                  }
+                : {}),
+            },
+          },
+        },
+      });
+      const args = parseConnectorToolArgs(imported.operations[0]!.inputSchema, {
+        itemId: "item/1",
+        dryRun: true,
+        "If-Match": "v2",
+        ...supplied,
+      });
+      const install = {
+        id: "json-body",
+        kind: "api",
+        source: imported.baseUrl,
+        secretId: null,
+        config: { auth: { type: "none" }, operations: imported.operations },
+      };
+      const fetch = vi.fn(async () => Response.json({ ok: true }));
+      const provider = new InstalledConnectorProvider(
+        { capabilityInstall: { findFirst: vi.fn(async () => install) } } as never,
+        {} as never,
+        { fetch },
+      );
+      const events = [];
+      for await (const event of provider.execute(
+        {
+          tool: "changeItems",
+          args,
+          executionId: "test",
+          route: { connectorId: "installed", resourceId: install.id, toolName: "changeItems" },
+        },
+        { spaceId: "space-1", userId: "user-1", signal: AbortSignal.timeout(5000) } as never,
+      ))
+        events.push(event);
+      expect(events).toMatchObject([{ type: "result" }]);
+      expect(fetch).toHaveBeenCalledOnce();
+      const [url, init] = fetch.mock.lastCall as unknown as [URL, RequestInit];
+      expect(String(url)).toBe(`https://93.184.216.34/v1/items/item%2F1${query}`);
+      expect(init.method).toBe(method);
+      expect(new Headers(init.headers).get("if-match")).toBe("v2");
+      expect(new Headers(init.headers).get("content-type")).toBe(
+        body === undefined ? null : "application/json",
+      );
+      expect(init.body).toBe(body);
+      if (declared === "header") expect(new Headers(init.headers).get("body")).toBe("legacy");
+    },
+  );
 });

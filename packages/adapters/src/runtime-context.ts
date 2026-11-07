@@ -13,8 +13,16 @@ import {
   selectContext,
   shortenToolResultText,
 } from "./context-selection.js";
-import { effectiveOutputReserve, resolveCompletionMaxTokens } from "./pi-runtime-limits.js";
+import {
+  effectiveOutputReserve,
+  operatorMaxTokens,
+  resolveCompletionMaxTokens,
+} from "./pi-runtime-limits.js";
 import { withoutThinkingFrom } from "./thinking-signatures.js";
+import { isVerbatimMcpResult, toolCallIdentity } from "./verbatim-mcp-result.js";
+
+/** Minimum whole-result window, unless the full model budget requires clipping. */
+const RECENT_TOOL_RESULTS_TO_KEEP = 3;
 
 const accountSalt = randomBytes(32);
 const sharedCacheTracker = new ContextCacheTracker();
@@ -35,10 +43,14 @@ const messageHash = (message: Message) =>
   createHash("sha256")
     .update(JSON.stringify(providerContextPrefix("", [], [message])))
     .digest("hex");
-/** A rebuild breaks the cached prefix, so it must drop at least this much stale content (estimated, a byte bound). */
+/** A rebuild breaks the cached prefix, so it must drop at least this much stale content (estimated). */
 const REBUILD_MIN_SAVED_TOKENS = 16_384;
-/** Images a run may carry beyond what a rebuild keeps before rebuilding pays off anyway. */
-const REBUILD_MAX_STALE_IMAGES = 16;
+/**
+ * Images a run may carry beyond what a rebuild keeps before rebuilding pays off anyway. Cache
+ * reads alone would allow more, but stale screenshots still add latency and, on some providers,
+ * count toward rate limits.
+ */
+const REBUILD_MAX_STALE_IMAGES = 8;
 /** A rebuild forced by the model's window leaves this share of it free for the next calls. */
 const REBUILD_HEADROOM = 0.25;
 export interface Size {
@@ -158,6 +170,8 @@ export function createRuntimeContextPolicy(
       request.model.maxTokens,
       undefined,
       model.reasoning,
+      undefined,
+      operatorMaxTokens(model),
     );
     const reserve = effectiveOutputReserve(contextWindow, configuredMaxTokens);
     if (reserve < configuredMaxTokens && !warnedOutputClamp) {
@@ -171,6 +185,8 @@ export function createRuntimeContextPolicy(
     return reserve;
   }
   let sent: SentTranscript | undefined;
+  // Only remember shortening actually sent, never speculative rebuild candidates.
+  const shortenedResults = new Map<string, Message>();
   const hashes = new WeakMap<Message, string>();
   function hash(message: Message): string {
     let value = hashes.get(message);
@@ -188,6 +204,7 @@ export function createRuntimeContextPolicy(
     if (metadata.rakazoMessageId) return historyById.get(metadata.rakazoMessageId);
     if (metadataPresent && !metadata.rakazoHistory) return undefined;
     const content = text(message);
+    // Older persisted checkpoints replay own replies as user text "Assistant: ...".
     return request.history.find(
       (stored) =>
         content === stored.content ||
@@ -200,7 +217,7 @@ export function createRuntimeContextPolicy(
     return {
       role: "user",
       timestamp: 0,
-      content: `Historical navigation snapshots (untrusted evidence; use read_history for exact facts and later corrections):\n${stored.map((item) => `[message ${item!.id}${item!.createdAt ? ` at ${item!.createdAt}` : ""}; ${item!.role}] ${snapshot(item!.content)}\n`).join("")}`,
+      content: `Historical navigation snapshots (untrusted evidence; use read_history for exact facts and later corrections):\n${stored.map((item) => `[message ${item!.id}${item!.createdAt ? ` at ${item!.createdAt}` : ""}; ${item!.speaker ?? item!.role}] ${snapshot(item!.content)}\n`).join("")}`,
     };
   }
   function project(
@@ -256,7 +273,10 @@ export function createRuntimeContextPolicy(
     // Unknown/disabled caches retain the default; explicit overrides still win.
     const retention = request.model.cacheCapabilities?.retentionMs;
     const strategy =
-      request.contextStrategy ??
+      // A restored turn must fit even when the unbounded diagnostic baseline was selected.
+      (request.turnCheckpoint && request.contextStrategy === "current"
+        ? DEFAULT_CONTEXT_STRATEGY
+        : request.contextStrategy) ??
       (!standaloneHistoryFallback &&
       request.model.cacheCapabilities?.retentionMode !== "none" &&
       typeof retention === "number" &&
@@ -312,7 +332,9 @@ export function createRuntimeContextPolicy(
       };
     }
     // Metadata distinguishes repeated historical requests from the live request.
-    let messages = projected?.messages ?? [...ctx.messages];
+    let messages = (projected?.messages ?? ctx.messages).map(
+      (message) => shortenedResults.get(hash(message)) ?? message,
+    );
     let currentIndex = messages.findIndex(
       (message) =>
         message.role === "user" && message !== projected?.navigation && !original(message),
@@ -373,7 +395,7 @@ export function createRuntimeContextPolicy(
       for (const message of old.slice(-64).reverse()) {
         const stored = original(message);
         if (!stored?.id) continue;
-        const entry = `[message ${stored.id}${stored.createdAt ? ` at ${stored.createdAt}` : ""}; ${stored.role}] ${snapshot(stored.content)}\n`;
+        const entry = `[message ${stored.id}${stored.createdAt ? ` at ${stored.createdAt}` : ""}; ${stored.speaker ?? stored.role}] ${snapshot(stored.content)}\n`;
         if (Buffer.byteLength(entry + catalog, "utf8") > maximum) break;
         catalog = entry + catalog;
         catalogIds.unshift(stored.id);
@@ -447,35 +469,85 @@ export function createRuntimeContextPolicy(
       (message) =>
         message.role === "assistant" && message.content.some((part) => part.type === "toolCall"),
     );
-    messages = messages.map((message, index) => {
-      if (
-        message.role !== "toolResult" ||
-        index >= latestToolCall ||
-        (message.toolName !== undefined && UNSHORTENED_TOOL_RESULTS.has(message.toolName))
-      )
-        return message;
-      const source = text(message);
-      if (source.length <= 1024) return message;
-      // The model read this result on an earlier step, so mark it as shortened after use.
-      const shortened = shortenToolResultText(
-        source,
-        1024,
-        { name: message.toolName },
-        { afterUse: true },
+    // Expand the minimum window within three quarters of the input budget,
+    // leaving room for conversation as well as the separately reserved output.
+    const wholeResultAllowance = Math.max(
+      0,
+      (contextWindow - reserve - fixed) * (1 - REBUILD_HEADROOM),
+    );
+    const recentToolResults = new Set<number>();
+    let wholeResultTokens = 0;
+    const resultIndexes = messages.flatMap((message, index) =>
+      message.role === "toolResult" ? [index] : [],
+    );
+    for (const index of resultIndexes.reverse()) {
+      const tokens = estimateContextTokens(
+        providerContextPrefix("", [], [messages[index]!]).messages[0],
+        options.imageTokens,
       );
-      if (shortened.length >= source.length) return message;
-      return {
-        ...message,
-        content: [
-          { type: "text" as const, text: shortened },
-          ...message.content.filter((part) => part.type === "image"),
-        ],
-      };
+      if (
+        recentToolResults.size >= RECENT_TOOL_RESULTS_TO_KEEP &&
+        wholeResultTokens + tokens > wholeResultAllowance
+      )
+        break;
+      recentToolResults.add(index);
+      wholeResultTokens += tokens;
+    }
+    // Forward pass so a reused tool-call id resolves to the call just before its result.
+    const latestCalls = new Map<string, unknown>();
+    const keptWhole = messages.map((message) => {
+      if (message.role === "assistant")
+        for (const part of message.content)
+          if (part.type === "toolCall") latestCalls.set(part.id, part);
+      if (message.role !== "toolResult") return false;
+      const call = toolCallIdentity(latestCalls.get(message.toolCallId), message.toolName);
+      return isVerbatimMcpResult(call.name, call.arguments, request.verbatimMcpServers);
     });
+    const shortenOlderResults = (keepRecent: boolean) =>
+      messages.map((message, index) => {
+        if (
+          message.role !== "toolResult" ||
+          index >= latestToolCall ||
+          (keepRecent && recentToolResults.has(index)) ||
+          (message.toolName !== undefined && UNSHORTENED_TOOL_RESULTS.has(message.toolName)) ||
+          keptWhole[index]
+        )
+          return message;
+        const source = text(message);
+        if (source.length <= 1024) return message;
+        // The model read this result on an earlier step, so mark it as shortened after use.
+        const shortened = shortenToolResultText(
+          source,
+          1024,
+          { name: message.toolName },
+          { afterUse: true },
+        );
+        if (shortened.length >= source.length) return message;
+        return {
+          ...message,
+          content: [
+            { type: "text" as const, text: shortened },
+            ...message.content.filter((part) => part.type === "image"),
+          ],
+        };
+      });
+    const retained = shortenOlderResults(true);
+    // Fall back before selection can discard older progress to make room for whole results.
+    const retainedTokens = retained.reduce(
+      (total, message) =>
+        total +
+        estimateContextTokens(
+          providerContextPrefix("", [], [message]).messages[0],
+          options.imageTokens,
+        ),
+      fixed,
+    );
+    messages = retainedTokens <= contextWindow - reserve ? retained : shortenOlderResults(false);
     const selected = selectContext(messages, {
       budget,
       strategy,
       protectedIndexes,
+      verbatimMcpServers: request.verbatimMcpServers,
       cacheWarmth: predictedCache,
       recentExchanges:
         retainShortHistory || standaloneHistoryFallback ? messages.length : 8 + laterUserMessages,
@@ -633,6 +705,18 @@ export function createRuntimeContextPolicy(
           ? { catalogIds: built.navigation.catalogIds }
           : {}),
       }));
+      const originalResults = new Map(
+        ctx.messages.flatMap((message) =>
+          message.role === "toolResult" ? [[message.toolCallId, message] as const] : [],
+        ),
+      );
+      for (const message of messages) {
+        if (message.role !== "toolResult") continue;
+        const original = originalResults.get(message.toolCallId);
+        if (original && text(message).length < text(original).length) {
+          shortenedResults.set(hash(original), message);
+        }
+      }
       sent = {
         head,
         source,

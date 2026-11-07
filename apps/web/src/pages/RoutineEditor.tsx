@@ -8,12 +8,12 @@ import type {
   RoutineWatchInput,
 } from "@rakazo/contracts";
 import { ROUTINE_WATCH_DEFAULT_MINUTES, ROUTINE_WATCH_MIN_MINUTES } from "@rakazo/contracts";
+import type { CronFreq, CronLabels, CronPreset } from "@rakazo/core";
 import {
-  type CronFreq,
-  type CronPreset,
   credentialForModel,
   cronFromPreset,
   defaultCronPreset,
+  ENGLISH_CRON_LABELS,
   formatCron,
   isOneShotRoutineCrons,
   presetFromCron,
@@ -36,6 +36,7 @@ import {
   Switch,
   Textarea,
 } from "@rakazo/ui-web";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
   Clock,
@@ -49,12 +50,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { cronLabels } from "../lib/cron";
 import {
   connectedModelOptions,
   modelOptionKey,
   parseModelOptionKey,
   thinkingLevelLabel,
 } from "../lib/model-catalog";
+import { useSpaceQueries } from "../lib/query";
 import { rpc } from "../lib/rpc";
 import { RoutineRunHistory } from "./RoutineRunHistory";
 import { RoutineSchedule } from "./RoutineSchedule";
@@ -84,13 +87,6 @@ const SCHEDULE_PRESETS: CronFreq[] = [
   "Interval",
   "Advanced",
 ];
-
-const COMING_SOON = [
-  { id: "teams", label: () => t`Teams message` },
-  { id: "linear", label: () => t`Linear issue` },
-  { id: "sentry", label: () => t`Sentry alert` },
-  { id: "pagerduty", label: () => t`PagerDuty incident` },
-] as const;
 
 export type RoutineDraftState = {
   name: string;
@@ -222,7 +218,10 @@ export function draftFromRoutine(routine: Routine): RoutineDraftState {
   };
 }
 
-export function routineTriggerSummary(routine: Routine): string {
+export function routineTriggerSummary(
+  routine: Routine,
+  labels: CronLabels = ENGLISH_CRON_LABELS,
+): string {
   if (!routine.active) return t`Paused`;
   const parts: string[] = [];
   if (routine.webhookEnabled) parts.push(t`When a webhook fires`);
@@ -230,33 +229,53 @@ export function routineTriggerSummary(routine: Routine): string {
   if (routine.messageProvider === "slack") parts.push(t`Slack message`);
   else if (routine.messageProvider === "teams") parts.push(t`Teams message`);
   else if (routine.messageProvider) parts.push(t`Message event`);
-  for (const cron of routine.crons) parts.push(formatCron(cron));
+  for (const cron of routine.crons) parts.push(formatCron(cron, labels));
   if (routine.watch) parts.push(t`When something changes`);
-  return parts.length > 0 ? parts.join(" · ") : t`No trigger`;
+  return parts.length > 0 ? parts.join(", ") : t`No trigger`;
 }
 
-export function RoutineListHeader({ onCreate }: { onCreate: () => void }) {
+export function RoutineList({
+  routines,
+  runningRoutineId,
+  onCreate,
+  onEdit,
+  onStop,
+}: {
+  routines: Routine[];
+  runningRoutineId?: string;
+  onCreate: () => void;
+  onEdit: (routine: Routine) => void;
+  onStop: () => void;
+}) {
   const { t } = useLingui();
   return (
-    <div className="mt-[30px] mb-3 flex items-center justify-between gap-3">
-      <div className="text-sm text-muted-foreground">
-        <Trans>Routines</Trans>
+    <div>
+      <div className="mb-2 flex justify-end">
+        <Button
+          variant="secondary"
+          size="icon-sm"
+          data-testid="routine-create-button"
+          aria-label={t`Create Routine`}
+          title={t`Create Routine`}
+          onClick={onCreate}
+        >
+          <Plus strokeWidth={1.9} />
+        </Button>
       </div>
-      <Button
-        variant="secondary"
-        size="icon-sm"
-        data-testid="routine-create-button"
-        aria-label={t`Create Routine`}
-        title={t`Create Routine`}
-        onClick={onCreate}
-      >
-        <Plus strokeWidth={1.9} />
-      </Button>
+      {routines.map((routine) => (
+        <RoutineListRow
+          key={routine.id}
+          routine={routine}
+          running={runningRoutineId === routine.id}
+          onOpen={() => onEdit(routine)}
+          onStop={onStop}
+        />
+      ))}
     </div>
   );
 }
 
-export function RoutineListRow({
+function RoutineListRow({
   routine,
   running,
   onOpen,
@@ -267,6 +286,8 @@ export function RoutineListRow({
   onOpen: () => void;
   onStop: () => void;
 }) {
+  const { i18n } = useLingui();
+  const scheduleLabels = cronLabels(i18n.locale);
   return (
     <div className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 hover:bg-accent">
       <button
@@ -285,20 +306,27 @@ export function RoutineListRow({
           <span className="block truncate text-[14.5px] font-medium text-foreground" dir="auto">
             {routine.name}
           </span>
-          <span className="block truncate text-[12.5px] text-muted-foreground/80">
-            {routineTriggerSummary(routine)}
-            {routine.modelProvider && routine.modelId ? ` · ${routine.modelId}` : ""}
+          <span className="flex min-w-0 gap-2 text-[12.5px] text-muted-foreground/80">
+            <span className="truncate">{routineTriggerSummary(routine, scheduleLabels)}</span>
+            {routine.modelProvider && routine.modelId ? (
+              <span className="truncate">{routine.modelId}</span>
+            ) : null}
           </span>
         </span>
       </button>
       {running ? (
-        <Button
-          size="xs"
-          onClick={onStop}
-          className="shrink-0 rounded-full bg-warning/15 text-warning hover:bg-warning/25"
-        >
-          <Trans>Running · Stop</Trans>
-        </Button>
+        <>
+          <span className="shrink-0 text-[12.5px] text-warning">
+            <Trans>Running</Trans>
+          </span>
+          <Button
+            size="xs"
+            onClick={onStop}
+            className="shrink-0 bg-warning/15 text-warning hover:bg-warning/25"
+          >
+            <Trans>Stop</Trans>
+          </Button>
+        </>
       ) : null}
     </div>
   );
@@ -341,6 +369,18 @@ export function RoutineEditor({
 }) {
   const { t } = useLingui();
   const fieldId = useId();
+  const queries = useSpaceQueries();
+  const scheduleStatus = useQuery({
+    ...queries.routines.list.queryOptions({ input: { botId: editing?.botId ?? "" } }),
+    enabled: editing !== null && draft.active,
+    refetchInterval: 15_000,
+    select: (routines) => routines.find((routine) => routine.id === editing?.id) ?? null,
+  });
+  const scheduleDelayed =
+    !scheduleStatus.isError &&
+    (scheduleStatus.data === undefined
+      ? editing?.scheduleDelayed
+      : scheduleStatus.data?.scheduleDelayed);
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   useEffect(() => {
@@ -433,24 +473,15 @@ export function RoutineEditor({
       </div>
 
       <div className="mb-5 flex items-center justify-between gap-3">
-        <label className="flex items-center gap-2.5 text-sm text-foreground/75">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={draft.active}
-            onClick={() => onChange({ ...draft, active: !draft.active })}
-            className={`relative h-[22px] w-[40px] rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-              draft.active ? "bg-primary" : "bg-input"
-            }`}
-          >
-            <span
-              className={`absolute top-[2px] left-0 h-[18px] w-[18px] rounded-full bg-background transition-transform ${
-                draft.active
-                  ? "translate-x-[20px] dark:bg-primary-foreground"
-                  : "translate-x-[2px] dark:bg-foreground"
-              }`}
-            />
-          </button>
+        <label
+          htmlFor={`${fieldId}-active`}
+          className="flex items-center gap-2.5 text-sm text-foreground/75"
+        >
+          <Switch
+            id={`${fieldId}-active`}
+            checked={draft.active}
+            onCheckedChange={(active) => onChange({ ...draft, active })}
+          />
           <Trans>Active</Trans>
         </label>
         <div className="flex items-center gap-2">
@@ -462,6 +493,12 @@ export function RoutineEditor({
           </Button>
         </div>
       </div>
+
+      {draft.active && scheduleDelayed ? (
+        <p role="status" className="mb-5 text-sm text-warning">
+          <Trans>Schedule delayed</Trans>
+        </p>
+      ) : null}
 
       <label htmlFor={`${fieldId}-name`} className="block text-sm text-muted-foreground">
         <Trans>Name</Trans>
@@ -684,23 +721,6 @@ export function RoutineEditor({
                 </span>
               ) : null}
             </span>
-
-            {COMING_SOON.map((item) => (
-              <span
-                key={item.id}
-                className="block"
-                title={item.id === "teams" ? t`Teams not enabled` : t`Coming soon`}
-              >
-                <DropdownMenuItem disabled>
-                  <span
-                    aria-hidden
-                    className="inline-block size-3.5 rounded-[4px]"
-                    style={{ background: comingSoonColor(item.id), opacity: 0.55 }}
-                  />
-                  {item.label()}
-                </DropdownMenuItem>
-              </span>
-            ))}
 
             <DropdownMenuItem
               disabled={Boolean(draft.watch) || draft.schedules.length > 0}
@@ -1032,18 +1052,5 @@ function schedulePresetLabel(freq: CronFreq): string {
       return t`Advanced...`;
     default:
       return freq;
-  }
-}
-
-function comingSoonColor(id: string): string {
-  switch (id) {
-    case "teams":
-      return "#6264A7";
-    case "linear":
-      return "#5E6AD2";
-    case "sentry":
-      return "#A467FD";
-    default:
-      return "#06AC38";
   }
 }

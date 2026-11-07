@@ -4,22 +4,18 @@ import {
   accessibilityHidden,
   accessibilityLabel as accessibilityName,
   accessibilityRemoveTraits,
-  background,
   buttonStyle,
   controlSize,
   disabled as disable,
-  fixedSize,
   font,
   foregroundStyle,
   frame,
   labelStyle,
   padding,
   progressViewStyle,
-  shapes,
-  strokeBorder,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useMobileTokens, useResolvedAppearance } from "../lib/native";
 import type { ActionProminence, NativeActionButtonProps } from "../lib/native-controls";
 import { actionFills, actionProminence, iosAtLeast } from "../lib/native-controls";
@@ -42,7 +38,6 @@ export function NativeActionButton({
   selected,
 }: NativeActionButtonProps) {
   const tokens = useMobileTokens();
-  const { fontScale } = useWindowDimensions();
   const scheme = useResolvedAppearance();
   const inactive = disabled || busy;
   const stretches = actionFills(prominence, fill);
@@ -52,20 +47,12 @@ export function NativeActionButton({
   // The prominent styles draw a white label, which disappears on the light dark-mode primary.
   const filled = !inactive && effectiveProminence === "primary";
   const ownLabel = stretches || filled || variant !== undefined;
-  const rectangular = variant === "rectangular";
   const measuredWidth = StyleSheet.flatten(style)?.width;
-  const primary = effectiveProminence === "primary";
   const labelModifiers = variant
     ? [
-        font({
-          ...(rectangular ? { size: 15 * fontScale } : { textStyle: "callout" as const }),
-          weight: rectangular ? "semibold" : "medium",
-        }),
-        foregroundStyle(
-          rectangular ? (primary ? tokens.primaryForeground : tokens.foreground) : tokens.link,
-        ),
-        ...(rectangular ? [fixedSize({ horizontal: false, vertical: true })] : []),
-        padding({ horizontal: rectangular ? 16 : 0, vertical: rectangular ? 12 : 8 }),
+        font({ textStyle: "callout", weight: "medium" }),
+        foregroundStyle(prominence === "destructive" ? tokens.destructive : tokens.link),
+        padding({ horizontal: 0, vertical: 8 }),
         ...(stretches
           ? [
               frame(
@@ -75,40 +62,33 @@ export function NativeActionButton({
               ),
             ]
           : []),
-        ...(rectangular ? [frame({ minHeight: 44 })] : []),
-        ...(rectangular
-          ? [
-              background(
-                primary ? tokens.primary : tokens.card,
-                shapes.roundedRectangle({ cornerRadius: 9 }),
-              ),
-              strokeBorder({
-                content: primary ? tokens.primary : tokens.foreground,
-                shape: "roundedRectangle",
-                cornerRadius: 9,
-                style: { lineWidth: 1 },
-              }),
-            ]
-          : []),
+        // The destructive text action (Disconnect) keeps a 44pt target.
+        ...(prominence === "destructive" ? [frame({ minHeight: 44 })] : []),
       ]
     : [
         ...(stretches ? [frame({ maxWidth: Infinity, ...(small ? { minHeight: 16 } : {}) })] : []),
         ...(filled ? [foregroundStyle(tokens.primaryForeground)] : []),
       ];
+  // Destructive buttons use the prominent style, which fills with the tint under a white
+  // label; the text-red `destructive` is too pale for that in dark mode.
   const color =
     effectiveProminence === "destructive"
-      ? tokens.destructive
+      ? variant
+        ? tokens.destructive
+        : tokens.destructiveFill
       : effectiveProminence === "primary"
         ? tokens.primary
         : undefined;
   const button = (
     <Host
+      // Expo UI reads matchContents only on mount. Wrapping changes which axis Yoga owns.
+      key={stretches ? "fill" : "intrinsic"}
       colorScheme={scheme}
       ignoreSafeArea="container"
       matchContents={stretches ? { vertical: true } : true}
       style={[
         stretches
-          ? { alignSelf: "stretch", minHeight: rectangular ? 44 : small ? undefined : 48 }
+          ? { alignSelf: "stretch", minHeight: small ? undefined : 48 }
           : { alignSelf: "flex-start" },
         style,
       ]}
@@ -121,7 +101,6 @@ export function NativeActionButton({
         modifiers={[
           ...(accessibilityActions?.length ? [accessibilityHidden(true)] : []),
           buttonStyle(variant ? "plain" : swiftStyle(effectiveProminence)),
-          ...(rectangular && stretches ? [frame({ maxWidth: Infinity })] : []),
           controlSize(
             small ? "small" : stretches ? "large" : prominence === "quiet" ? "small" : "regular",
           ),

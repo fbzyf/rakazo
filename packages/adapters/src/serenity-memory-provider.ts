@@ -9,6 +9,8 @@ import type {
   SemanticMemoryResult,
   SemanticMemorySaveRequest,
 } from "@rakazo/adapter-kit";
+import { egressRefused } from "./network-address.js";
+import type { SerenityConnectionConfig, SerenityNetworkDependencies } from "./serenity-client.js";
 import {
   classifySerenityEndpointTrust,
   forgetSerenity,
@@ -17,19 +19,17 @@ import {
   probeSerenity,
   recallSerenity,
   rememberSerenity,
-  type SerenityConnectionConfig,
-  type SerenityNetworkDependencies,
-  serenityEndpointRequiresDeploymentOwner,
+  serenityEndpointRequiresPrivateEndpoint,
 } from "./serenity-client.js";
 
 export const SERENITY_PROVIDER_ID = "serenity";
 
-/** Thrown when prepare would probe a private endpoint without deployment-owner authorization. */
-export class MemoryProviderDeploymentOwnerRequiredError extends Error {
-  readonly code = "DEPLOYMENT_OWNER_REQUIRED" as const;
-  constructor(message = "This memory provider endpoint requires deployment-owner authorization.") {
+/** Thrown when prepare would probe a private endpoint without operator authorization. */
+export class MemoryProviderPrivateEndpointRequiredError extends Error {
+  readonly code = "PRIVATE_ENDPOINT_REQUIRED" as const;
+  constructor(message = "This memory provider endpoint requires operator authorization.") {
     super(message);
-    this.name = "MemoryProviderDeploymentOwnerRequiredError";
+    this.name = "MemoryProviderPrivateEndpointRequiredError";
   }
 }
 
@@ -67,19 +67,19 @@ function parseSerenityConnection(
   };
 }
 
-export function serenityRequiresDeploymentOwner(settings: Record<string, string>): boolean {
+export function serenityRequiresPrivateEndpoint(settings: Record<string, string>): boolean {
   if (settings.endpointTrust === "private") return true;
   const endpoint = settings.endpoint?.trim();
   if (!endpoint) return false;
   try {
-    return serenityEndpointRequiresDeploymentOwner(normalizeSerenityEndpoint(endpoint));
+    return serenityEndpointRequiresPrivateEndpoint(normalizeSerenityEndpoint(endpoint));
   } catch {
     return false;
   }
 }
 
 /**
- * DNS/trust classification without probing. Callers must enforce deployment-owner
+ * DNS/trust classification without probing. Callers must enforce operator
  * authorization on the result before any credentialed Serenity request.
  */
 export async function classifySerenityConnectionSettings(
@@ -105,7 +105,10 @@ export async function prepareSerenityConnection(
   // Reclassification can flip public→private between the API owner check and this probe.
   // Non-owners must fail closed here before any credentialed MCP request.
   if (classifiedSettings.endpointTrust === "private" && options?.allowPrivateEndpoint === false) {
-    throw new MemoryProviderDeploymentOwnerRequiredError();
+    throw egressRefused(
+      URL.parse(classifiedSettings.endpoint ?? "")?.hostname ?? "",
+      new MemoryProviderPrivateEndpointRequiredError(),
+    );
   }
   const connection = parseSerenityConnection(classifiedSettings, credentials);
   const probe = await probeSerenity(
@@ -351,8 +354,42 @@ export class SerenityMemoryProvider implements SemanticMemoryProvider {
           "Serenity writes are disabled for this Space. Enable writing in Memory settings to forget facts.",
       };
     }
-    // Serenity forget is id-scoped (opaque fact_id); entity namespaces do not apply.
-    const result = await forgetSerenity(request.id, this.connection, {
+    // Serenity forget deletes any fact id in the brain, so confirm the fact sits in one of
+    // this bot's recall namespaces first and fail closed when that cannot be shown.
+    const allowed = recallEntities(
+      request.scope,
+      request.botId,
+      context.spaceId,
+      this.connection.brainLabel,
+    );
+    if (request.entity && !allowed.includes(request.entity)) {
+      return { ok: false, error: "That memory belongs to another bot or Space." };
+    }
+    const factId = request.id.trim();
+    if (!factId) return { ok: false, error: "id is required" };
+    const entities = request.entity ? [request.entity] : allowed;
+    let owned = false;
+    const errors: string[] = [];
+    for (const entity of entities) {
+      const recalled = await recallSerenity(this.connection, { entity, signal: context.signal });
+      if (!recalled.ok) {
+        errors.push(recalled.error);
+        continue;
+      }
+      if (recalled.value.some((fact) => fact.factId === factId)) {
+        owned = true;
+        break;
+      }
+    }
+    if (!owned) {
+      return {
+        ok: false,
+        error: errors.length
+          ? `Could not confirm this memory belongs to this bot: ${errors.join("; ")}`
+          : "No memory with that id was found in this bot's recall results.",
+      };
+    }
+    const result = await forgetSerenity(factId, this.connection, {
       reason: request.reason,
       signal: context.signal,
     });
