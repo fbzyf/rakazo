@@ -114,7 +114,6 @@ pnpm test -- \
   apps/web/src/lib/wecom-oauth.test.ts \
   apps/web/src/lib/wecom-webview.test.ts \
   apps/web/src/pages/Auth.test.tsx \
-  apps/web/src/lib/thread-snapshot-cache.test.ts \
   packages/core/src/attachments.test.ts \
   packages/contracts/src/attachments.test.ts \
   packages/adapters/src/design-crm-tools.test.ts \

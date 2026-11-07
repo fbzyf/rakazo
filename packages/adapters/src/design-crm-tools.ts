@@ -180,7 +180,7 @@ export async function searchDesignCrmVisits(
   const gate = authorizeDesignCrmVisit(deps);
   if (gate) return gate;
   const config = resolveConfig(deps);
-  if ("error" in config) return config;
+  if ("error" in config) return { error: config.error };
   const body: Record<string, unknown> = { page_size: SEARCH_PAGE_SIZE };
   const cursor = input.cursor?.trim();
   if (cursor) body.start_cursor = cursor;
@@ -191,7 +191,7 @@ export async function searchDesignCrmVisits(
     path: `/databases/${config.databaseId}/query`,
     body,
   });
-  if ("error" in payload) return payload;
+  if ("error" in payload) return { error: payload.error };
   const results = Array.isArray(payload.results) ? payload.results : [];
   const visits = results
     .filter((page): page is NotionPage => Boolean(page && typeof page === "object"))
@@ -214,14 +214,14 @@ export async function getDesignCrmVisit(
   const gate = authorizeDesignCrmVisit(deps);
   if (gate) return gate;
   const config = resolveConfig(deps);
-  if ("error" in config) return config;
+  if ("error" in config) return { error: config.error };
   const pageId = input.id?.trim();
   if (pageId) {
     const page = await notionJson(deps, config, {
       method: "GET",
       path: `/pages/${pageId}`,
     });
-    if ("error" in page) return page;
+    if ("error" in page) return { error: page.error };
     if (!sameNotionId(page.parent?.database_id, config.databaseId)) {
       return { error: "Visit is not in the Design CRM mirror." };
     }

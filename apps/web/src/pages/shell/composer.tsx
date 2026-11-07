@@ -39,11 +39,6 @@ import {
 import { recordMessageSent } from "../../components/GitHubStarPrompt";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { attachmentPickerAccept } from "../../lib/attachment-picker-accept";
-import {
-  isWeComWebView,
-  WECOM_ATTACHMENT_ACCEPT,
-  WECOM_FILE_INPUT_CLASS,
-} from "../../lib/wecom-webview";
 import { useCallSession } from "../../lib/call-session";
 import {
   beginComposerDraftSubmission,
@@ -56,6 +51,11 @@ import {
 import { hasOpenDialog } from "../../lib/has-open-dialog";
 import { usePageSession } from "../../lib/pages";
 import { isFileDrag, isFilePaste } from "../../lib/pending-attachments";
+import {
+  isWeComWebView,
+  WECOM_ATTACHMENT_ACCEPT,
+  WECOM_FILE_INPUT_CLASS,
+} from "../../lib/wecom-webview";
 import { ComposerReplyPreview } from "./chat-context";
 import type { PendingAttachment } from "./chat-shared";
 import { previewMessageText } from "./chat-shared";

@@ -93,8 +93,8 @@ import {
   selectRunConnections,
 } from "./connection-context.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
-import { isDesignCrmVisitBot, isDesignCrmVisitToolName } from "./design-crm-tools.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
+import { isDesignCrmVisitBot, isDesignCrmVisitToolName } from "./design-crm-tools.js";
 import type { ExecutorDeps } from "./executor-deps.js";
 import type { FleetRun } from "./fleet-tools.js";
 import { loadBotGroupDirectory, loadGroupContext } from "./group-handoff.js";

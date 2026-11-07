@@ -63,7 +63,6 @@ export {
   pluginSubmissionReviewedEmail,
 } from "./plugin-submission-email.js";
 export { referralEmail } from "./referral-email.js";
-export { welcomeEmail } from "./welcome-email.js";
 export type { WecomConfig } from "./wecom.js";
 export {
   exchangeWecomAuthorizationCode,
@@ -72,6 +71,7 @@ export {
   wecomAuthorizeUrl,
   wecomConfigFromEnv,
 } from "./wecom.js";
+export { welcomeEmail } from "./welcome-email.js";
 
 export interface AuthEnv {
   analytics?: ProductAnalytics;
