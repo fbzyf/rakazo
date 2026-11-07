@@ -323,6 +323,24 @@ it("keeps password sign-in one step away", async () => {
   expect(host.querySelector('input[type="password"]')).toBeNull();
 });
 
+it("offers Forgot password on emailed-code sign-in when recovery is configured", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...codeCapabilities,
+    passwordReset: true,
+    resetUrl: "https://example.test/reset-password",
+  });
+  await render();
+  expect(host.querySelector('input[type="password"]')).toBeNull();
+  const forgot = host.querySelector('a[href="/forgot-password"]');
+  expect(forgot?.textContent).toBe("Forgot password?");
+});
+
+it("hides Forgot password when recovery is not configured", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue(codeCapabilities);
+  await render();
+  expect(host.querySelector('a[href="/forgot-password"]')).toBeNull();
+});
+
 it("leaves the password form unchanged without email codes", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...codeCapabilities, emailCode: false });
   await render();

@@ -304,9 +304,10 @@ error that names `EXPO_ACCESS_TOKEN`; the token itself is never logged.
 ### Verification and password recovery email
 
 Password changes for signed-in users require no email configuration. Forgotten-password recovery
-appears on sign-in only when a transactional email provider is available. Rakazo uses a
-provider-neutral contract and ships an SMTP adapter, so Amazon SES, Resend, and self-hosted SMTP
-servers use the same configuration:
+appears on sign-in only when a transactional email provider is available. When it is available, the
+**Forgot password?** link is shown on the default sign-in screen (including emailed-code sign-in),
+not only after switching to the password form. Rakazo uses a provider-neutral contract and ships an
+SMTP adapter, so Amazon SES, Resend, and self-hosted SMTP servers use the same configuration:
 
 ```env
 SMTP_URL=smtps://smtp-user:replace-with-password@smtp.example.com:465

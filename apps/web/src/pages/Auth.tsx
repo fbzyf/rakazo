@@ -385,13 +385,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     maxLength={MAX_PASSWORD_LENGTH}
                     className={fieldClass}
                   />
-                  {mode === "in" && reset?.passwordReset ? (
-                    <div className="mt-2 text-right text-sm">
-                      <Link to="/forgot-password" className="font-medium text-foreground">
-                        <Trans>Forgot password?</Trans>
-                      </Link>
-                    </div>
-                  ) : null}
+                </div>
+              ) : null}
+              {mode === "in" && reset?.passwordReset && !codeStep ? (
+                <div className="mt-2 w-full text-right text-sm">
+                  <Link to="/forgot-password" className="font-medium text-foreground">
+                    <Trans>Forgot password?</Trans>
+                  </Link>
                 </div>
               ) : null}
               {error ? (
