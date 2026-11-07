@@ -253,7 +253,11 @@ it.each(["in", "up"])("signs in with an emailed code by default in %s mode", asy
   vi.mocked(rpc).mockResolvedValue({ needsSetup: false });
   await render();
   expect(host.querySelector('input[type="password"]')).toBeNull();
-  expect(button("Forgot password?")).toBeUndefined();
+  if (mode === "in") {
+    expect(button("Forgot password?")).toBeDefined();
+  } else {
+    expect(button("Forgot password?")).toBeUndefined();
+  }
   expect(button("Use password")!.dataset.prominence).toBe("quiet");
   if (mode === "up") await type(input("Name")!, "Ada");
   await type(input("Email")!, " ada@example.test ");

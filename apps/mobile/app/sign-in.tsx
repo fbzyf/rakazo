@@ -426,7 +426,7 @@ export default function SignIn() {
                           style={{ alignSelf: "center", marginTop: 16 }}
                         />
                       ) : null}
-                      {mode === "in" && !usingCode && reset?.passwordReset && reset.resetUrl ? (
+                      {mode === "in" && reset?.passwordReset && reset.resetUrl ? (
                         <Pressable
                           accessibilityRole="button"
                           hitSlop={8}

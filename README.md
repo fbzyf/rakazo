@@ -45,6 +45,7 @@ gateway is a separate process.
 - Bring-your-own model credentials through Pi
 - App integrations through Composio or Pipedream Connect, plus user-installed Treg, remote MCP, and OpenAPI tool sources
 - Docker, E2B, Daytona, CreateOS, Boat, and trusted local-computer support
+- Forgot-password recovery on sign-in when transactional email (SMTP) is configured
 
 ## Demo
 
