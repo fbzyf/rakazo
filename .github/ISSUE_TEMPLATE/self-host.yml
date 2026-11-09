@@ -47,7 +47,7 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics report
-      description: If the stack starts, paste the output of `docker compose -f docker-compose.images.yml exec api node dist/cli/diagnostics.js`. It contains no secrets.
+      description: If the stack starts, paste the output of `docker compose -f docker-compose.images.yml exec -T -w /app/apps/api api node --enable-source-maps dist/cli/diagnostics.js`. It contains no secrets.
       render: markdown
 
   - type: input
