@@ -133,7 +133,7 @@ Compose bot homes mount only their own subdirectory of the application volume us
 Attach a diagnostics report to a [self-host issue](https://github.com/elie222/rakazo/issues/new?template=self-host.yml):
 
 ```bash
-docker compose -f docker-compose.images.yml exec api node dist/cli/diagnostics.js
+docker compose -f docker-compose.images.yml exec -T -w /app/apps/api api node --enable-source-maps dist/cli/diagnostics.js
 ```
 
 From a checkout, use `-f infra/compose/docker-compose.yml` (or the production file) instead. The
