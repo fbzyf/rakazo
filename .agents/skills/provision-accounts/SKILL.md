@@ -8,12 +8,44 @@ description: Create verified app accounts on a closed-registration self-host wit
 Public signup is off (`SIGNUPS_ENABLED=false`). Create ordinary verified accounts with the
 server-side `bootstrap-owner` CLI. App accounts never administer the server.
 
-A cloud agent cannot SSH to the production host. When the maintainer pastes into SSH, **one
-command per turn**. Do not ask them to paste private keys or `.env` values. Talk to this
-fork's maintainer in Chinese.
+Talk to this fork's maintainer in Chinese. Never ask them to paste a private key, `.env`, or
+account password into chat.
 
 Public-repo rules: no hostnames, IPs, emails, account names, or secret values in commits or PRs.
-Credentials stay in the SSH session and in mail the maintainer sends.
+Credentials stay on the production host and in mail sent from that host.
+
+## How a cloud agent reaches the host
+
+A running agent does not pick up newly added secrets. After secrets change, start a **new**
+agent.
+
+**Default: the agent does not SSH.** Give the maintainer one host command per turn. They run
+it in their existing SSH session. Generated passwords never enter the cloud VM or this chat.
+
+**Optional: agent SSH**, only when the maintainer wants the next agent to run the command.
+
+1. On their machine, generate a **dedicated** ed25519 key. Do not reuse their personal login
+   key. Install only the public key on the production host.
+2. In this environment's Secrets tab on the Cloud Agents dashboard, add:
+   - `RAKAZO_OPS_SSH_KEY` — the private key, type **Runtime Secret** (redacted from
+     transcripts, tool results, and commits as `[REDACTED]`).
+   - `RAKAZO_OPS_SSH_HOST` — SSH target (`user@host` or a Host alias), type Environment
+     Variable.
+   - `RAKAZO_OPS_SSH_KNOWN_HOSTS` — one `known_hosts` line, type Runtime Secret.
+3. Do not put those values in `environment.json`, the repo, or chat. If the host firewall
+   allowlists SSH clients, add Cursor Cloud Agent egress IPs from
+   `https://cursor.com/docs/ips.json`.
+4. The next agent writes the key to `~/.ssh` with mode `600` from the env vars and never
+   echoes them.
+5. Redirect bootstrap TSV to a file **on the production host**. The agent reports only
+   counts (`created` / `exists` / …). Runtime Secret redaction covers the SSH key, not
+   passwords the CLI just printed. Send credentials from the host's mail, or let people
+   sign in with an email code / password-reset mail.
+
+A dedicated key can be revoked without touching the maintainer's personal key. Do not grant
+computer/sandbox or sudo the agent does not need. Prompt injection can still make a
+networked agent exfiltrate whatever that key can read; keep TSV off stdout that flows back
+into the agent.
 
 ## Why the old command failed
 
