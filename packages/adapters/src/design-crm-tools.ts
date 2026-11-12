@@ -11,6 +11,8 @@ export const DESIGN_CRM_VISIT_INSTRUCTION =
 export const DESIGN_CRM_ACCESS_DENIED = "This account cannot read Design CRM visit data.";
 export const DESIGN_CRM_BOT_DENIED = "This tool is only available on 客服助手.";
 export const DESIGN_CRM_NOT_CONFIGURED = "Design CRM visit mirror is not configured.";
+/** Same reply for a missing page, a Notion error, and a page outside the authorized database. */
+export const DESIGN_CRM_VISIT_UNAVAILABLE = "Visit is not in the Design CRM mirror.";
 
 const NOTION_VERSION = "2022-06-28";
 const NOTION_API = "https://api.notion.com/v1";
@@ -232,9 +234,8 @@ export async function getDesignCrmVisit(
       method: "GET",
       path: `/pages/${pageId}`,
     });
-    if ("error" in page) return { error: page.error };
-    if (!sameNotionId(page.parent?.database_id, config.databaseId)) {
-      return { error: "Visit is not in the Design CRM mirror." };
+    if ("error" in page || !sameNotionId(page.parent?.database_id, config.databaseId)) {
+      return { error: DESIGN_CRM_VISIT_UNAVAILABLE };
     }
     return { visit: toVisitRecord(page), source: "notion_mirror", realtime: false };
   }

@@ -153,7 +153,7 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 第一次追上官方时，GitHub 会显示升级分支和旧 `main` 冲突。这是正常的：底盘已经换成官方标签。合入方式是在升级分支上把当前 `main` 记为已合并、但保留升级分支的文件，再快进 `main`。不要在生产服务器上强推，也不要在正在跑的机器上当场解决冲突。
 
 1. 把测通的 `upgrade/<标签>` 合并进 `main` 并推送。
-2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调、`DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`）。允许名单和库 ID 不再写在代码里，空名单表示谁都不能查拜访。
+2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调、`DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`）。允许名单和库 ID 不再写在代码里，空名单表示谁都不能查拜访。Notion 里只把拜访数据库分享给这个集成，个人其他页面不要分享。复制机器人不会带走这把钥匙。
 3. 若现有库还是 Postgres 16，先按 `docs/self-host-upgrading.md` 在**备份恢复环境**演练升到 18，再动生产。
 4. 按 `docs/self-host-upgrading.md` 更新镜像。`local` 标签要带当前提交重建；有发布标签则改 `RAKAZO_IMAGE_TAG` 后 pull。接口、后台任务、网页一起换。
 5. 接口启动时会跑 `prisma migrate deploy`。失败时健康检查应保持红灯，此时不要当成功。

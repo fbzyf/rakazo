@@ -7,6 +7,7 @@ import {
   DESIGN_CRM_VISIT_GET,
   DESIGN_CRM_VISIT_SEARCH,
   DESIGN_CRM_VISIT_TOOL_NAMES,
+  DESIGN_CRM_VISIT_UNAVAILABLE,
   getDesignCrmVisit,
   isDesignCrmReadAllowed,
   isDesignCrmVisitBot,
@@ -85,15 +86,17 @@ describe("design CRM allowlist", () => {
 describe("design CRM visit tools", () => {
   it("rejects outsiders without calling Notion", async () => {
     const fetchMock = vi.fn<typeof fetch>();
-    const result = await searchDesignCrmVisits(
-      { ...allowedDeps(fetchMock), actorEmail: "outsider@example.test" },
-      { query: "Acme" },
-    );
-    expect(result).toEqual({ error: DESIGN_CRM_ACCESS_DENIED });
+    const deps = { ...allowedDeps(fetchMock), actorEmail: "outsider@example.test" };
+    await expect(searchDesignCrmVisits(deps, { query: "Acme" })).resolves.toEqual({
+      error: DESIGN_CRM_ACCESS_DENIED,
+    });
+    await expect(getDesignCrmVisit(deps, { id: "page-visit-1" })).resolves.toEqual({
+      error: DESIGN_CRM_ACCESS_DENIED,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects order and follow-up bots without calling Notion", async () => {
+  it("rejects other bots, including a copied 客服助手, without calling Notion", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     await expect(
       searchDesignCrmVisits({ ...allowedDeps(fetchMock), botName: "订单助手" }, { query: "Acme" }),
@@ -101,6 +104,12 @@ describe("design CRM visit tools", () => {
     await expect(
       getDesignCrmVisit(
         { ...allowedDeps(fetchMock), botName: "追交货助手" },
+        { id: "page-visit-1" },
+      ),
+    ).resolves.toEqual({ error: DESIGN_CRM_BOT_DENIED });
+    await expect(
+      getDesignCrmVisit(
+        { ...allowedDeps(fetchMock), botName: "客服助手 copy" },
         { id: "page-visit-1" },
       ),
     ).resolves.toEqual({ error: DESIGN_CRM_BOT_DENIED });
@@ -213,16 +222,38 @@ describe("design CRM visit tools", () => {
     });
   });
 
-  it("refuses a page that is not in the locked database", async () => {
+  it("treats a foreign page, a Notion error, and a missing page as the same absence", async () => {
     expect(sameNotionId(OTHER_MIRROR_ID_DASHED, TEST_MIRROR_ID)).toBe(false);
-    const fetchMock = vi.fn<typeof fetch>(async () =>
-      Response.json(visitPage({ parent: { database_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" } })),
-    );
-    await expect(
-      getDesignCrmVisit(allowedDeps(fetchMock), { id: "page-visit-1" }),
-    ).resolves.toEqual({
-      error: "Visit is not in the Design CRM mirror.",
-    });
+    const privateTitle = "Private diary title";
+    const cases = [
+      Response.json(
+        visitPage({
+          parent: { database_id: OTHER_MIRROR_ID_DASHED },
+          properties: {
+            摘要: { type: "rich_text", rich_text: [{ plain_text: privateTitle }] },
+          },
+        }),
+      ),
+      Response.json(
+        { object: "error", message: `Could not find page ${privateTitle}` },
+        { status: 400 },
+      ),
+      Response.json(
+        { object: "error", status: 404, message: `${privateTitle} does not exist` },
+        { status: 404 },
+      ),
+    ];
+    const results = [];
+    for (const response of cases) {
+      const fetchMock = vi.fn<typeof fetch>(async () => response);
+      results.push(await getDesignCrmVisit(allowedDeps(fetchMock), { id: "page-private" }));
+    }
+    expect(results).toEqual([
+      { error: DESIGN_CRM_VISIT_UNAVAILABLE },
+      { error: DESIGN_CRM_VISIT_UNAVAILABLE },
+      { error: DESIGN_CRM_VISIT_UNAVAILABLE },
+    ]);
+    expect(JSON.stringify(results)).not.toContain(privateTitle);
   });
 
   it("filters visit type on 拜访类型 with select.equals", async () => {
