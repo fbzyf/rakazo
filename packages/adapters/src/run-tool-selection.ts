@@ -6,7 +6,6 @@ import {
 import { isBackgroundRunTrigger, isOwnerStartedRun } from "@rakazo/core";
 import { builtinAgentTools } from "./builtin-tools.js";
 import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
-import { isDesignCrmVisitToolName } from "./design-crm-tools.js";
 import { selectMemoryTools } from "./memory-tools.js";
 import { filterImageReturningComputerTools } from "./model-vision.js";
 import { USER_COMPUTER_SCREEN_TOOLS } from "./run-tools-user-computer.js";
@@ -32,8 +31,6 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "scratchpad_list",
   "board_tickets",
   "ticket_get",
-  "design_crm_visit_search",
-  "design_crm_visit_get",
   "skill_read",
   "web_search",
   "web_fetch",
@@ -89,8 +86,6 @@ export function selectBuiltinToolsForRun(options: {
   userComputer?: boolean;
   /** That desktop can look at and drive its apps. */
   userComputerScreen?: boolean;
-  /** Offer Design CRM visit tools only on 客服助手. */
-  designCrmVisitEnabled?: boolean;
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   const ownerStartedRun = isOwnerStartedRun(options.trigger, Boolean(options.followUpFromUser));
@@ -122,7 +117,6 @@ export function selectBuiltinToolsForRun(options: {
       (options.mediaVideoEnabled || tool.name !== "generate_video") &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
-      (options.designCrmVisitEnabled || !isDesignCrmVisitToolName(tool.name)) &&
       (!isBackgroundRunTrigger(options.trigger) ||
         ![
           "message_user",
