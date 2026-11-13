@@ -1,6 +1,6 @@
 # 丰宝 AI 工作台：官方升级与自有功能区隔
 
-这份说明给维护「丰宝 AI 工作台」用。工作台是官方 [elie222/rakazo](https://github.com/elie222/rakazo) 加上我们自己的功能。升级时要换官方底盘，同时把企业微信、Excel、CRM 这些配件装回去，并且不能弄坏正在用的环境。
+这份说明给维护「丰宝 AI 工作台」用。工作台是官方 [elie222/rakazo](https://github.com/elie222/rakazo) 加上我们自己的功能。升级时要换官方底盘，同时把企业微信和 Excel 这些配件装回去，并且不能弄坏正在用的环境。
 
 一句话：**先在副本上把官方版本和我们的改动叠在一起、测过，再备份生产环境并切换。不要在正在跑的服务器上直接覆盖。**
 
@@ -16,7 +16,7 @@
 | 线 | 是什么 | 谁改 |
 | --- | --- | --- |
 | 官方底盘 | 聊天、机器人、电脑、登录框架、数据库结构 | 只从 `elie222/rakazo` 来 |
-| 自有配件 | 企业微信登录/工作台网页、Excel 附件、侧边栏缓存、CRM 拜访只读查询 | 只在我们的提交里 |
+| 自有配件 | 企业微信登录/工作台网页、Excel 附件、侧边栏缓存 | 只在我们的提交里 |
 
 Git 上对应关系：
 
@@ -36,7 +36,6 @@ Git 上对应关系：
 - `packages/auth/src/wecom.ts` 和企业微信测试
 - `apps/web/src/lib/wecom-oauth.ts`、`apps/web/src/lib/wecom-webview.ts` 和对应测试、e2e
 - `apps/web/public/wecom.js`（CSP 不允许内联脚本，工作台 UA 探测放这个文件）
-- `packages/adapters/src/design-crm-tools.ts`、`packages/adapters/src/run-tools-design-crm.ts` 和测试
 - `packages/db/prisma/migrations/20261022120000_wecom_user_binding/`
 - 本说明和 `scripts/fork-upgrade-*.sh`
 
@@ -48,12 +47,12 @@ Git 上对应关系：
 - `apps/api/src/app.ts`、`apps/api/src/env.ts`
 - `packages/auth/src/index.ts`
 - `packages/adapters/src/executor.ts`、`packages/adapters/src/builtin-tools.ts`
-- `packages/adapters/src/run-tool-selection.ts`、`packages/adapters/src/run-instructions.ts`、`packages/adapters/src/run-tools.ts`（官方把执行器拆开后，CRM 接入口在这些文件里）
+- `packages/adapters/src/run-tool-selection.ts`、`packages/adapters/src/run-instructions.ts`、`packages/adapters/src/run-tools.ts`（拜访查询的内置接入口已撤下。升级时不要把旧的 Notion 钥匙接回去）
 - `packages/core/src/attachments.ts`、`packages/contracts/src/attachments.ts`
 - `packages/db/prisma/schema.prisma`
 - `.env.example`、各语言 `messages.po`
 
-解决冲突的原则：官方新逻辑留下，再把我们的接入口接回去（企业微信按钮、CRM 工具注册）。不要为了省事把官方整段新代码删掉。
+解决冲突的原则：官方新逻辑留下，再把我们的接入口接回去（企业微信按钮）。不要为了省事把官方整段新代码删掉，也不要把已经撤下的 Notion 拜访工具拣回来。
 
 ## 升级前必须遵守的规则
 
@@ -116,7 +115,6 @@ pnpm test -- \
   apps/web/src/pages/Auth.test.tsx \
   packages/core/src/attachments.test.ts \
   packages/contracts/src/attachments.test.ts \
-  packages/adapters/src/design-crm-tools.test.ts \
   packages/adapters/src/executor.test.ts \
   apps/api/src/env.test.ts \
   apps/api/src/auth-capabilities.test.ts
@@ -145,15 +143,15 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 - 未绑定的企业微信用户看到「未绑定」，不会自动建号
 - 企业微信里能选 Excel 附件
 - 侧边栏切换机器人，对话还在
-- 客服助手能查拜访（只读）；不该用的账号或机器人没有这些工具
 - 发一条普通消息，机器人仍能回
+- 服务器没有预装 Notion。要读某个页面的人，自己在「MCP 服务器」里添加 HTTP 连接 `https://mcp.notion.com/mcp`，并在授权页只勾选要用的页面
 
 ### 4. 测通后再换正在用的环境
 
 第一次追上官方时，GitHub 会显示升级分支和旧 `main` 冲突。这是正常的：底盘已经换成官方标签。合入方式是在升级分支上把当前 `main` 记为已合并、但保留升级分支的文件，再快进 `main`。不要在生产服务器上强推，也不要在正在跑的机器上当场解决冲突。
 
 1. 把测通的 `upgrade/<标签>` 合并进 `main` 并推送。
-2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调、`DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`）。允许名单和库 ID 不再写在代码里，空名单表示谁都不能查拜访。
+2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调）。删掉 `DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`。服务器不再使用这把 Notion 钥匙。
 3. 若现有库还是 Postgres 16，先按 `docs/self-host-upgrading.md` 在**备份恢复环境**演练升到 18，再动生产。
 4. 按 `docs/self-host-upgrading.md` 更新镜像。`local` 标签要带当前提交重建；有发布标签则改 `RAKAZO_IMAGE_TAG` 后 pull。接口、后台任务、网页一起换。
 5. 接口启动时会跑 `prisma migrate deploy`。失败时健康检查应保持红灯，此时不要当成功。
@@ -168,11 +166,11 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 
 - 能用新文件就用新文件，只在官方文件里留一两行接入。
 - 提交标题用 `custom:`。
-- CRM 这种完全是我们业务的能力，长期更适合做成工作台里配置的 MCP / OpenAPI 连接，而不是写死在内置工具里。那是后续改造，不是第一次升级的前置条件。
-- 账号允许名单、Notion 库 ID、企业微信回调地址只放服务器 `.env`，不要写进仓库。
+- 页面连接不由服务器预装，也不写进环境变量。用户在「MCP 服务器」里自己添加：选 HTTP，填入对方给出的地址（Notion 是 `https://mcp.notion.com/mcp`），保存后在授权页勾选具体页面。之后的读取和处理都走这条用户自己的连接。升级时不要把旧的拜访库钥匙拣回来。
+- 企业微信回调地址只放服务器 `.env`，不要写进仓库。
 
 ## 这次仓库里多了什么
 
 - `scripts/fork-upgrade-status.sh`：只看差距，不改代码。
 - `scripts/fork-upgrade-start.sh`：从官方标签开工作分支并拣入自有提交。
-- `.env.example` 里的企业微信回调、CRM 库 ID 和 CRM 允许名单都是空的。真正的值只属于服务器上的 `.env`。
+- `.env.example` 里的企业微信回调是空的。真正的值只属于服务器上的 `.env`。服务器上如果还留着 Notion 拜访钥匙，删掉即可。
