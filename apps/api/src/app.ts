@@ -154,6 +154,7 @@ import { deleteAccountContent } from "./account-deletion.js";
 import { mountAccountExportRoute } from "./account-export.js";
 import { mountAccountImportRoute } from "./account-import.js";
 import { mountAppAssociation, nativePasskeys } from "./app-association.js";
+import { mountArtifactDownloadRoute } from "./artifact-download.js";
 import { storeInboundAttachment } from "./artifacts.js";
 import { mountAuditExportRoute } from "./audit-export.js";
 import { createBillingService } from "./billing.js";
@@ -1045,6 +1046,17 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   });
   mountAccountExportRoute(app, { prisma, auth, artifacts, home });
   mountAuditExportRoute(app, { prisma, sessionActor });
+  mountArtifactDownloadRoute(app, {
+    prisma,
+    artifacts,
+    actorFor: async (request, spaceId) => {
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user) return null;
+      return actorFromMembership(
+        requireMembership(prisma, session.user.id, spaceId, session.session.id),
+      );
+    },
+  });
   mountVoiceHttpRoutes(app, { prisma, secrets, env }, async (c) => {
     const actor = await sessionActor(c.req.raw);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });

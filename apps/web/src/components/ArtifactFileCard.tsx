@@ -5,11 +5,11 @@ import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import { artifactPreviewKind, isAttachmentAudioMimeType } from "@rakazo/contracts";
 import { fileSizeParts } from "@rakazo/core";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle, Spinner } from "@rakazo/ui-web";
-import { Code2, Download, FileText, Play, X } from "lucide-react";
+import { Code2, Download, FileText, X } from "lucide-react";
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../lib/artifact-open";
-import { downloadArtifact, downloadArtifactBytes, fetchArtifactBytes } from "../lib/artifact-open";
+import { artifactContentUrl, downloadArtifact, fetchArtifactBytes } from "../lib/artifact-open";
 import { errorText } from "../lib/user-error";
 import { BuiCard } from "./ai/primitives";
 import { IconTooltip } from "./IconTooltip";
@@ -147,6 +147,7 @@ function FilePreview({
 }: ArtifactFileCardProps & { closeButtonRef: RefObject<HTMLButtonElement | null> }) {
   const { t } = useLingui();
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [state, setState] = useState<
     | { status: "loading" }
     | { status: "ready"; bytes: Uint8Array; text?: string }
@@ -155,7 +156,11 @@ function FilePreview({
   const targetBotId = "botId" in target ? target.botId : undefined;
   const targetGroupId = "groupId" in target ? target.groupId : undefined;
 
+  const kind = artifactPreviewKind(mimeType);
+  const mediaUrl = artifactContentUrl(artifactId);
+
   useEffect(() => {
+    if (kind === "video") return;
     let cancelled = false;
     const artifactTarget: ArtifactTarget =
       targetBotId !== undefined ? { botId: targetBotId } : { groupId: targetGroupId! };
@@ -183,8 +188,7 @@ function FilePreview({
     return () => {
       cancelled = true;
     };
-  }, [artifactId, targetBotId, targetGroupId, mimeType, t]);
-  const kind = artifactPreviewKind(mimeType);
+  }, [artifactId, targetBotId, targetGroupId, mimeType, kind, t]);
 
   return (
     <>
@@ -202,8 +206,7 @@ function FilePreview({
               void (async () => {
                 setDownloadError(null);
                 try {
-                  if (state.status === "ready") downloadArtifactBytes(name, mimeType, state.bytes);
-                  else await downloadArtifact(target, artifactId, name, mimeType);
+                  await downloadArtifact(target, artifactId, name, mimeType);
                 } catch {
                   setDownloadError(t`Could not download ${name}. Try again.`);
                 }
@@ -229,7 +232,19 @@ function FilePreview({
         </div>
       ) : null}
       <div className="relative min-h-0 flex-1 overflow-y-auto">
-        {state.status === "loading" ? (
+        {kind === "video" ? (
+          mediaError ? (
+            <div className="m-5 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive">
+              {mediaError}
+            </div>
+          ) : (
+            <VideoPreview
+              src={mediaUrl}
+              name={name}
+              onError={() => setMediaError(t`Could not load this file.`)}
+            />
+          )
+        ) : state.status === "loading" ? (
           <div className="absolute inset-0 grid place-items-center text-muted-foreground">
             <Spinner aria-label={t`Loading preview…`} />
           </div>
@@ -239,8 +254,6 @@ function FilePreview({
           </div>
         ) : kind === "html" && state.text !== undefined ? (
           <SandboxedHtmlViewer html={state.text} title={name} />
-        ) : kind === "video" ? (
-          <VideoPreview bytes={state.bytes} name={name} />
         ) : kind === "pdf" ? (
           <PdfViewer bytes={state.bytes} title={name} />
         ) : state.text !== undefined && kind === "text" ? (
@@ -258,64 +271,16 @@ function FilePreview({
 }
 
 function AudioArtifactPreview({
-  target,
   artifactId,
   name,
-  mimeType,
   onDownload,
 }: ArtifactFileCardProps & { onDownload: () => Promise<void> }) {
   const { t } = useLingui();
-  const [state, setState] = useState<
-    { status: "idle" | "loading" } | { status: "ready"; src: string } | { status: "error" }
-  >({ status: "idle" });
-  const lifetime = useRef<{ cancelled: boolean; started: boolean; url?: string }>(null);
-  const audio = useRef<HTMLAudioElement>(null);
-  useEffect(() => {
-    const current = { cancelled: false, started: false, url: undefined as string | undefined };
-    lifetime.current = current;
-    return () => {
-      current.cancelled = true;
-      if (current.url) URL.revokeObjectURL(current.url);
-    };
-  }, []);
-  useEffect(() => {
-    if (state.status !== "ready") return;
-    const player = audio.current;
-    void player?.play().catch(() => {});
-    return () => player?.pause();
-  }, [state]);
-
-  async function startPlayback() {
-    const current = lifetime.current;
-    if (!current || current.cancelled || current.started) return;
-    current.started = true;
-    setState({ status: "loading" });
-    try {
-      const bytes = await fetchArtifactBytes(target, artifactId);
-      if (current.cancelled) return;
-      if (!isAttachmentAudioMimeType(mimeType)) throw new Error("Unsupported audio type");
-      current.url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }));
-      setState({ status: "ready", src: current.url });
-    } catch {
-      if (!current.cancelled) setState({ status: "error" });
-    }
-  }
+  const src = artifactContentUrl(artifactId);
 
   return (
     <>
       <div className="flex items-center gap-3">
-        {state.status === "idle" || state.status === "loading" ? (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            aria-label={t`Play ${name}`}
-            aria-busy={state.status === "loading"}
-            disabled={state.status === "loading"}
-            onClick={() => void startPlayback()}
-          >
-            <Play />
-          </Button>
-        ) : null}
         <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{name}</span>
         <Button
           variant="ghost"
@@ -327,43 +292,42 @@ function AudioArtifactPreview({
           <Download strokeWidth={1.8} className="size-[19px]" />
         </Button>
       </div>
-      {state.status === "loading" ? (
-        <span className="text-sm text-muted-foreground">
-          <Spinner aria-label={t`Loading preview…`} />
-        </span>
-      ) : state.status === "error" ? (
-        <DownloadError message={t`Could not load this file.`} />
-      ) : state.status === "ready" ? (
-        // biome-ignore lint/a11y/useMediaCaption: Attachment playback has no caption track supplied by the author.
-        <audio
-          ref={audio}
-          src={state.src}
-          controls
-          preload="metadata"
-          aria-label={name}
-          className="mt-3 w-full"
-        />
-      ) : null}
+      {/* biome-ignore lint/a11y/useMediaCaption: Attachment playback has no caption track supplied by the author. */}
+      <audio src={src} controls preload="metadata" aria-label={name} className="mt-3 w-full" />
     </>
   );
 }
 
-export function VideoPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
-  const [src, setSrc] = useState<string>();
+export function VideoPreview({
+  src,
+  bytes,
+  name,
+  onError,
+}: {
+  src?: string;
+  bytes?: Uint8Array;
+  name: string;
+  onError?: () => void;
+}) {
+  const [blobSrc, setBlobSrc] = useState<string>();
   useEffect(() => {
+    if (!bytes) return;
     const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "video/mp4" }));
-    setSrc(url);
+    setBlobSrc(url);
     return () => URL.revokeObjectURL(url);
   }, [bytes]);
+  const playback = src ?? blobSrc;
+  if (!playback) return null;
   return (
     // biome-ignore lint/a11y/useMediaCaption: Attachment playback has no caption track supplied by the author.
     <video
-      src={src}
+      src={playback}
       controls
       playsInline
       preload="metadata"
       aria-label={name}
       className="h-full w-full object-contain"
+      onError={onError}
     />
   );
 }
