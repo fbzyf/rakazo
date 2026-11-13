@@ -1,9 +1,29 @@
-import { reduceLiveMessageBlocks, withLiveStreamingProgress } from "@rakazo/core";
+import type { MessageBlock } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import type { MobileSnapshot } from "./api";
-import { reconcileVisibleThreadSnapshot } from "./thread-snapshot";
+import { reduceLiveMessageBlocks, withLiveStreamingProgress } from "./events.js";
+import { reconcileVisibleThreadSnapshot } from "./thread-snapshot.js";
 
-function snapshot(): MobileSnapshot {
+type Snapshot = {
+  threadId: string;
+  cursor: number;
+  messages: Array<{ id: string; role: string; blocks: MessageBlock[] }>;
+  olderCursor: number | null;
+  run: { id: string; status: string; error?: string } | null;
+  botId?: string;
+  groupId?: string;
+  groupName?: string;
+  activeRuns?: Array<{ id: string; status: string }>;
+  members?: unknown[];
+  computer?: {
+    state: string;
+    controlHolder: string;
+    screenAvailable: boolean;
+    mode: string;
+    busyBotName: string | null;
+  };
+};
+
+function snapshot(): Snapshot {
   return {
     threadId: "thread-1",
     cursor: 0,
@@ -50,9 +70,9 @@ describe("visible thread snapshot publication", () => {
 
   it("ignores hidden text but publishes each changed text value when streaming is enabled", () => {
     const initial = snapshot();
-    let streaming: MobileSnapshot = initial;
+    let streaming: Snapshot = initial;
     for (let event = 1; event <= 200; event += 1) {
-      const raw: MobileSnapshot = {
+      const raw: Snapshot = {
         ...initial,
         cursor: event,
         messages: [
@@ -75,7 +95,7 @@ describe("visible thread snapshot publication", () => {
   it("publishes all snapshot fields except cursor, including nested values and array order", () => {
     const previous = snapshot();
     expect(reconcileVisibleThreadSnapshot(previous, structuredClone(previous))).toBe(previous);
-    const changes: Partial<MobileSnapshot>[] = [
+    const changes: Partial<Snapshot>[] = [
       { threadId: "thread-2" },
       { botId: "bot-1" },
       { groupId: "group-1", groupName: "Group" },
@@ -100,7 +120,7 @@ describe("visible thread snapshot publication", () => {
       const next = { ...previous, ...change };
       expect(reconcileVisibleThreadSnapshot(previous, next)).toBe(next);
     }
-    const messages: MobileSnapshot = {
+    const messages: Snapshot = {
       ...previous,
       messages: [
         { id: "message-1", role: "bot", blocks: [{ kind: "text", text: "One" }] },
