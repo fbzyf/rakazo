@@ -4944,10 +4944,6 @@ msgstr "ピン留め済み"
 msgid "Plan"
 msgstr "プラン"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name}を再生"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "再生中…"

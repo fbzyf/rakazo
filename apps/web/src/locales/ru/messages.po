@@ -4944,10 +4944,6 @@ msgstr "Закреплённые"
 msgid "Plan"
 msgstr "Тариф"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Воспроизвести {name}"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Воспроизведение…"

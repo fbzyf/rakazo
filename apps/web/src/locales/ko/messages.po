@@ -4944,10 +4944,6 @@ msgstr "고정됨"
 msgid "Plan"
 msgstr "요금제"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} 재생"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "재생 중…"
