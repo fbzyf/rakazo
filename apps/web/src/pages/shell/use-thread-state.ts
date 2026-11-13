@@ -1,5 +1,5 @@
 import type { Routine, TaughtSkill, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
-import { withLiveStreamingProgress } from "@rakazo/core";
+import { reconcileVisibleThreadSnapshot, withLiveStreamingProgress } from "@rakazo/core";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   getResponseStreamingEnabled,
@@ -19,6 +19,7 @@ export type PinnedAround = {
 export function useThreadState() {
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
   const snapshotRef = useRef<ThreadSnapshot | null>(null);
+  const visibleFlushFrame = useRef<number | null>(null);
   const streamResponses = useSyncExternalStore(
     subscribeResponseStreaming,
     getResponseStreamingEnabled,
@@ -36,14 +37,53 @@ export function useThreadState() {
   const messageScroll = useRef<HTMLDivElement>(null);
   const pinnedAroundRef = useRef<PinnedAround | null>(null);
 
+  function publishVisibleSnapshot() {
+    const visible = withLiveStreamingProgress(snapshotRef.current, streamResponsesRef.current);
+    setSnapshot((previous) => reconcileVisibleThreadSnapshot(previous, visible));
+  }
+
+  function cancelVisibleSnapshot() {
+    if (visibleFlushFrame.current == null) return;
+    cancelAnimationFrame(visibleFlushFrame.current);
+    visibleFlushFrame.current = null;
+  }
+
+  function flushVisibleSnapshot() {
+    cancelVisibleSnapshot();
+    publishVisibleSnapshot();
+  }
+
+  function scheduleVisibleSnapshot() {
+    if (visibleFlushFrame.current != null) return;
+    visibleFlushFrame.current = requestAnimationFrame(() => {
+      visibleFlushFrame.current = null;
+      publishVisibleSnapshot();
+    });
+  }
+
   function commitSnapshot(next: ThreadSnapshot | null) {
+    const previousThreadId = snapshotRef.current?.threadId;
     snapshotRef.current = next;
-    setSnapshot(withLiveStreamingProgress(next, streamResponsesRef.current));
+    // Same-thread progress can land several times in one frame; a thread switch paints now.
+    if (next && next.threadId === previousThreadId) {
+      scheduleVisibleSnapshot();
+      return;
+    }
+    flushVisibleSnapshot();
   }
 
   useEffect(() => {
-    setSnapshot(withLiveStreamingProgress(snapshotRef.current, streamResponses));
+    flushVisibleSnapshot();
   }, [streamResponses]);
+
+  useEffect(
+    () => () => {
+      if (visibleFlushFrame.current == null) return;
+      cancelAnimationFrame(visibleFlushFrame.current);
+      visibleFlushFrame.current = null;
+    },
+    [],
+  );
 
   function updateSnapshot(update: (prev: ThreadSnapshot | null) => ThreadSnapshot | null) {
     commitSnapshot(update(snapshotRef.current));

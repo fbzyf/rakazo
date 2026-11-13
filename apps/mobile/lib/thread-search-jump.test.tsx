@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 
 import type { ThreadScrollState } from "@rakazo/core";
-import { openThreadWindow, withLiveStreamingProgress } from "@rakazo/core";
+import {
+  openThreadWindow,
+  reconcileVisibleThreadSnapshot,
+  withLiveStreamingProgress,
+} from "@rakazo/core";
 import { act, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
@@ -9,7 +13,6 @@ import type { MobileSnapshot } from "./api";
 import { rpc } from "./api";
 import { ThreadJumpAnchor } from "./thread-jump";
 import { ThreadScrollBehavior } from "./thread-scroll";
-import { reconcileVisibleThreadSnapshot } from "./thread-snapshot";
 import type { PinnedThreadWindow } from "./thread-window";
 import { applyThreadMessageJump } from "./thread-window";
 

@@ -23,6 +23,7 @@ import type { createSpaceRpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import type { RosterDropTarget } from "./roster-drop";
 import { resolveRosterDrop } from "./roster-drop";
+import { shouldSkipSpaceRosterInterval, snapshotHasWorkingRun } from "./space-roster-poll";
 import type { useShellNavigation } from "./use-shell-navigation";
 import { firstThreadRoute } from "./use-shell-navigation";
 import type { ThreadState } from "./use-thread-state";
@@ -440,10 +441,17 @@ export function useSpaceBootstrap({
     };
     window.addEventListener("focus", refreshVisibleBots);
     document.addEventListener("visibilitychange", refreshVisibleBots);
-    // Poll skips while a refresh is in flight; focus/visibility and event-driven
-    // callers still bump botsRefreshEpoch so only the latest response applies.
+    // Poll skips while a refresh is in flight or the open chat is writing.
+    // Focus, visibility, and event-driven callers still refresh.
     const poll = window.setInterval(() => {
-      if (botsRefreshInFlight.current > 0) return;
+      if (
+        shouldSkipSpaceRosterInterval({
+          botsRefreshInFlight: botsRefreshInFlight.current,
+          openChatWorking: snapshotHasWorkingRun(snapshotRef.current),
+        })
+      ) {
+        return;
+      }
       refreshVisibleBots();
     }, 3_000);
     return () => {
