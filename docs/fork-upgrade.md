@@ -155,7 +155,7 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 1. 把测通的 `upgrade/<标签>` 合并进 `main` 并推送。
 2. 生产 `.env` 补上这次跳版本会用到的项（至少 `POSTGRES_APP_PASSWORD`、企业微信回调、`DESIGN_CRM_NOTION_TOKEN`、`DESIGN_CRM_NOTION_DATABASE_ID`、`DESIGN_CRM_ALLOWED_EMAILS`）。允许名单和库 ID 不再写在代码里，空名单表示谁都不能查拜访。
 3. 若现有库还是 Postgres 16，先按 `docs/self-host-upgrading.md` 在**备份恢复环境**演练升到 18，再动生产。
-4. 按 `docs/self-host-upgrading.md` 更新镜像。`local` 标签要带当前提交重建；有发布标签则改 `RAKAZO_IMAGE_TAG` 后 pull。接口、后台任务、网页一起换。
+4. 日常把已经合进本 fork `main` 的提交发到正在跑的生产机，按 `.agents/skills/ops-deploy/SKILL.md`：在 `build-v080` 构建本地 `rakazo/app:v080-YYYYMMDD`，再改 `RAKAZO_IMAGE_TAG` 滚动 api / worker / web。GitHub 合并不等于上线。追上官方大版本仍先看本文，镜像细节见 `docs/self-host-upgrading.md`。
 5. 接口启动时会跑 `prisma migrate deploy`。失败时健康检查应保持红灯，此时不要当成功。
 6. 再做一次上面的人手清单。
 
