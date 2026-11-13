@@ -21,6 +21,7 @@ concurrency:
 env:
   TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX: mirror.gcr.io/
 
+# This fork has no IncrediBuild runners. GitHub-hosted ubuntu-latest is what actually starts.
 jobs:
   # Pull requests skip suites their files cannot affect (see .github/scripts/changed-areas.sh); a
   # job skipped by `if` still satisfies a required check. Main skips this job, and with it every
@@ -28,7 +29,7 @@ jobs:
   changes:
     name: Changed areas
     if: github.event_name == 'pull_request'
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       web: ${{ steps.areas.outputs.web }}
@@ -51,7 +52,7 @@ jobs:
     name: Production builds
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -84,7 +85,7 @@ jobs:
   # main always runs everything.
   static-checks:
     name: Lint and typecheck
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     concurrency:
       group: ci-checks-${{ github.ref == 'refs/heads/main' && 'main' || github.run_id }}
@@ -160,7 +161,7 @@ jobs:
   # The unit suite is CPU-bound, so three runners finish in about a third of the time.
   unit-tests-shard:
     name: Unit tests (${{ matrix.shard }}/3)
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -209,7 +210,7 @@ jobs:
     name: Checks
     needs: [static-checks, unit-tests-shard]
     if: always()
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - run: test "${{ needs.static-checks.result }}" = success && test "${{ needs.unit-tests-shard.result }}" = success
 
@@ -254,7 +255,7 @@ jobs:
   # The suites are CPU-bound, so two runners finish in about half the time.
   test-integration-shard:
     name: Postgres journeys (${{ matrix.shard }}/2)
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -287,7 +288,7 @@ jobs:
     name: Postgres journeys
     needs: test-integration-shard
     if: always()
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - run: test "${{ needs.test-integration-shard.result }}" = success
 
@@ -295,7 +296,7 @@ jobs:
     name: Postgres upgrade
     needs: changes
     if: needs.changes.outputs.compose == 'true'
-    runs-on: incredibuild-ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
