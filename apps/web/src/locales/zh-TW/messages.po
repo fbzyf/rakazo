@@ -2880,6 +2880,7 @@ msgstr "完成"
 msgid "Downgrade at renewal"
 msgstr "下次續訂時降級"
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2897,10 +2898,6 @@ msgstr "下載 {name}"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "下載 CSV"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "下載 PDF"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4705,10 +4702,6 @@ msgstr "OpenAI 相容伺服器 URL"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw 或 Hermes"
 
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "開啟瀏覽器的列印對話框。目的地請選擇「另存為 PDF」。"
-
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4944,10 +4937,6 @@ msgstr "置頂"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "方案"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "播放 {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
