@@ -2879,6 +2879,7 @@ msgstr "완료"
 msgid "Downgrade at renewal"
 msgstr ""
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2896,10 +2897,6 @@ msgstr "{name} 다운로드"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "CSV 다운로드"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "PDF 다운로드"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4704,10 +4701,6 @@ msgstr "OpenAI 호환 서버 주소"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw 또는 Hermes"
 
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "브라우저의 인쇄 대화상자를 엽니다. 대상으로 PDF로 저장을 선택하세요."
-
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4943,10 +4936,6 @@ msgstr "고정됨"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "요금제"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} 재생"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"

@@ -2879,6 +2879,7 @@ msgstr "Listo"
 msgid "Downgrade at renewal"
 msgstr "Reducir al renovar"
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2896,10 +2897,6 @@ msgstr "Descargar {name}"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "Descargar CSV"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "Descargar PDF"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4704,10 +4701,6 @@ msgstr "URL de servidor compatible con OpenAI"
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw o Hermes"
 
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "Abre el diálogo de impresión del navegador. Elige Guardar como PDF como destino."
-
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx
 #: src/pages/Onboarding.tsx
@@ -4943,10 +4936,6 @@ msgstr "Fijados"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "Plan"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Reproducir {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
