@@ -21,6 +21,8 @@ vi.mock("../lib/bootstrap", () => ({
 vi.mock("../lib/artifact-open", () => ({
   decodeArtifactBase64: vi.fn(),
   downloadArtifactBytes: vi.fn(),
+  artifactContentUrl: (id: string) => `/api/artifacts/${id}`,
+  startArtifactDownload: vi.fn(),
 }));
 vi.mock("../lib/relative-time", () => ({ formatRelativeTime: () => "just now" }));
 vi.mock("@lingui/react/macro", () => {

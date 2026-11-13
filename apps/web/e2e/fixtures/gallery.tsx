@@ -648,6 +648,8 @@ window.fetch = async (input, init) => {
     return Response.json({
       json: { contentBase64: btoa(IMAGE_SVG), mimeType: "image/svg+xml" },
     });
+  if (url.pathname.startsWith("/api/artifacts/"))
+    return new Response(IMAGE_SVG, { headers: { "content-type": "image/svg+xml" } });
   if (url.pathname.startsWith("/rpc/"))
     return Response.json({ json: { message: "Not available in the gallery" } }, { status: 503 });
   return realFetch(input, init);
