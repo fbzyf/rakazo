@@ -2,6 +2,7 @@ import type {
   Actor,
   Bot,
   BotAvatarSet,
+  BotRosterVisibility,
   BotSection,
   MessageBlock,
   SpaceBot,
@@ -74,6 +75,11 @@ function rosterRunErrorId(
 // section and reorder writes, so the newest message's time wins when the chat has one.
 function rosterUpdatedAt(newestMessage: { createdAt: Date } | undefined, botUpdatedAt: Date) {
   return newestMessage?.createdAt ?? botUpdatedAt;
+}
+
+/** `mine` (default) is the actor's own bots; `space` is every bot in the Space. */
+function rosterOwnerWhere(userId: string, visibility?: BotRosterVisibility): { userId?: string } {
+  return visibility === "space" ? {} : { userId };
 }
 
 function mapBot(
@@ -186,12 +192,17 @@ export function createRepos(
     }));
   }
 
-  async function listSpaceBotsForSpaces(spaceIds: string[], userId: string): Promise<SpaceBot[]> {
+  async function listSpaceBotsForSpaces(
+    spaceIds: string[],
+    userId: string,
+    options: { visibility?: BotRosterVisibility } = {},
+  ): Promise<SpaceBot[]> {
     if (spaceIds.length === 0) return [];
     const rows = await prisma.bot.findMany({
       where: {
         spaceId: { in: spaceIds },
         archivedAt: null,
+        ...rosterOwnerWhere(userId, options.visibility),
       },
       select: {
         id: true,
@@ -235,7 +246,7 @@ export function createRepos(
     });
   }
 
-  return {
+  const api = {
     async listBotSections(actor: Actor): Promise<BotSection[]> {
       return listBotSectionsForSpaces([actor.spaceId]);
     },
@@ -357,7 +368,15 @@ export function createRepos(
       });
     },
 
-    async listBots(actor: Actor, options: { archived?: boolean } = {}): Promise<Bot[]> {
+    async listBots(
+      actor: Actor,
+      options: {
+        archived?: boolean;
+        visibility?: BotRosterVisibility;
+        /** One same-space bot; skips the mine filter so get/update can map it. */
+        botId?: string;
+      } = {},
+    ): Promise<Bot[]> {
       const bots = await withNewestThreadMessages(
         prisma,
         await withLatestBotRuns(
@@ -366,6 +385,8 @@ export function createRepos(
             where: {
               spaceId: actor.spaceId,
               archivedAt: options.archived ? { not: null } : null,
+              ...(options.botId ? { id: options.botId } : {}),
+              ...(options.botId ? {} : rosterOwnerWhere(actor.userId, options.visibility)),
             },
             include: {
               thread: { include: { reads: readStateFor(actor.userId) } },
@@ -487,6 +508,13 @@ export function createRepos(
     },
 
     listSpaceBotsForSpaces,
+
+    async listedBot(actor: Actor, botId: string): Promise<Bot> {
+      await api.getBot(actor, botId);
+      const [bot] = await api.listBots(actor, { botId });
+      if (!bot) throw new IsolationError();
+      return bot;
+    },
 
     async getBot(actor: Actor, botId: string, options: { includeArchived?: boolean } = {}) {
       const bot = await prisma.bot.findFirst({
@@ -721,20 +749,24 @@ export function createRepos(
 
     async reorderBots(actor: Actor, botIds: string[]): Promise<void> {
       await prisma.$transaction(async (tx) => {
+        const unique = new Set(botIds);
+        if (unique.size !== botIds.length) throw new IsolationError();
         const bots = await tx.bot.findMany({
           where: {
             spaceId: actor.spaceId,
             archivedAt: null,
           },
-          select: { id: true },
+          select: { id: true, position: true },
         });
-        const existing = new Set(bots.map((bot) => bot.id));
-        if (existing.size !== botIds.length || botIds.some((id) => !existing.has(id))) {
-          throw new IsolationError();
-        }
-        // ponytail: rosters are small; switch to one SQL CASE update only if this becomes hot.
+        const byId = new Map(bots.map((bot) => [bot.id, bot]));
+        if (botIds.some((id) => !byId.has(id))) throw new IsolationError();
+        const slots = botIds
+          .map((id) => byId.get(id)!.position)
+          .sort((left, right) => left - right);
         await Promise.all(
-          botIds.map((id, position) => tx.bot.update({ where: { id }, data: { position } })),
+          botIds.map((id, index) =>
+            tx.bot.update({ where: { id }, data: { position: slots[index] } }),
+          ),
         );
       });
     },
@@ -772,4 +804,5 @@ export function createRepos(
       return mapBot(updated);
     },
   };
+  return api;
 }
