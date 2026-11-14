@@ -49,6 +49,11 @@ import {
 import { hasOpenDialog } from "../../lib/has-open-dialog";
 import { usePageSession } from "../../lib/pages";
 import { isFilePaste } from "../../lib/pending-attachments";
+import {
+  isWeComWebView,
+  WECOM_ATTACHMENT_ACCEPT,
+  WECOM_FILE_INPUT_CLASS,
+} from "../../lib/wecom-webview";
 import { ComposerReplyPreview } from "./chat-context";
 import type { PendingAttachment } from "./chat-shared";
 import { previewMessageText } from "./chat-shared";
@@ -673,27 +678,35 @@ const ComposerBody = memo(function Composer({
               : "gap-x-3.5 py-[9px]"
         }`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={ATTACHMENT_ACCEPT}
-          className="hidden"
-          onChange={(event) => pickAttachments(event.target.files)}
-        />
-        <Button
-          ref={attachButtonRef}
-          variant="ghost"
-          size="icon"
-          aria-label={t`Attach file`}
-          disabled={disabled}
-          onClick={() => fileInputRef.current?.click()}
-          className={`col-start-1 size-8 shrink-0 rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-            expanded ? "row-start-2" : ""
+        <div
+          className={`relative col-start-1 ${expanded ? "row-start-2" : ""} ${
+            isWeComWebView() ? "size-11" : "size-8"
           }`}
         >
-          <Plus size={16} strokeWidth={2} />
-        </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={isWeComWebView() ? WECOM_ATTACHMENT_ACCEPT : ATTACHMENT_ACCEPT}
+            aria-label={t`Attach file`}
+            disabled={disabled}
+            className={isWeComWebView() ? WECOM_FILE_INPUT_CLASS : "hidden"}
+            onChange={(event) => pickAttachments(event.target.files)}
+          />
+          <Button
+            ref={attachButtonRef}
+            variant="ghost"
+            size="icon"
+            aria-label={t`Attach file`}
+            aria-hidden={isWeComWebView() || undefined}
+            tabIndex={isWeComWebView() ? -1 : undefined}
+            disabled={disabled}
+            onClick={() => fileInputRef.current?.click()}
+            className="size-full shrink-0 rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus size={16} strokeWidth={2} />
+          </Button>
+        </div>
         <div
           ref={composerFieldRef}
           data-testid="composer-field"

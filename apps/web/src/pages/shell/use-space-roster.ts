@@ -24,6 +24,7 @@ import { errorText } from "../../lib/user-error";
 import type { RosterDropTarget } from "./roster-drop";
 import { resolveRosterDrop } from "./roster-drop";
 import { createRosterSchedule, ROSTER_POLL_MS } from "./roster-schedule";
+import { shouldSkipSpaceRosterInterval, snapshotHasWorkingRun } from "./space-roster-poll";
 import type { useShellNavigation } from "./use-shell-navigation";
 import { firstThreadRoute } from "./use-shell-navigation";
 import type { ThreadState } from "./use-thread-state";
@@ -448,9 +449,16 @@ export function useSpaceBootstrap({
     window.addEventListener("focus", refreshVisibleBots);
     document.addEventListener("visibilitychange", refreshVisibleBots);
     // While the server signals roster changes this only heals a missed one. It skips while a
-    // refresh is in flight; other callers still bump botsRefreshEpoch so only the latest applies.
+    // refresh is in flight or the open chat is writing; other callers still refresh.
     const poll = window.setInterval(() => {
-      if (botsRefreshInFlight.current > 0) return;
+      if (
+        shouldSkipSpaceRosterInterval({
+          botsRefreshInFlight: botsRefreshInFlight.current,
+          openChatWorking: snapshotHasWorkingRun(snapshotRef.current),
+        })
+      ) {
+        return;
+      }
       rosterSchedule.poll();
     }, ROSTER_POLL_MS);
     return () => {

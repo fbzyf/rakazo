@@ -86,6 +86,7 @@ import {
 } from "./connection-context.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
+import { isDesignCrmVisitBot, isDesignCrmVisitToolName } from "./design-crm-tools.js";
 import type { ExecutorDeps } from "./executor-deps.js";
 import type { FleetRun } from "./fleet-tools.js";
 import { loadBotGroupDirectory, loadGroupContext } from "./group-handoff.js";
@@ -1290,6 +1291,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             emailClaimable:
               Boolean(deps.inboundEmailDomain) && !emailName && run.userId === bot.userId,
             emailSend: Boolean(deps.email),
+            designCrmVisitEnabled: isDesignCrmVisitBot(bot.name),
           }),
           // Cross-owner agent connections only exist for chat-linked bots. The chat link is its
           // creator's, and a connected agent's messages run as them, so only their runs may
@@ -1829,6 +1831,9 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
                   trigger: run.trigger,
                 }),
                 userComputer,
+                designCrmVisitEnabled: strategicBuiltins.some((tool) =>
+                  isDesignCrmVisitToolName(tool.name),
+                ),
               })
                 .filter((instruction): instruction is string => Boolean(instruction))
                 .join("\n\n"),

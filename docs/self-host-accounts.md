@@ -47,18 +47,39 @@ Without email delivery, use the server-side account bootstrap described below; p
 ## Installations without email
 
 For an installation without email, first set `SIGNUPS_ENABLED=false` in `.env` and start the stack.
-Create the intended account privately (the password stays in the shell environment):
+Create the intended account privately. `docker compose exec` uses the image `WORKDIR` (`/app`),
+not the API service working directory, so pass `-w /app/apps/api` (or the absolute script path).
+The CLI prints a TSV row **before** it creates the personal workspace, so a later failure cannot
+drop the password:
 
 ```bash
 read -r -p "Account email: " OWNER_EMAIL
 read -r -s -p "Account password (at least 16 characters): " OWNER_PASSWORD
 export OWNER_EMAIL OWNER_PASSWORD
-docker compose --env-file .env -f docker-compose.images.yml exec -e OWNER_EMAIL -e OWNER_PASSWORD api node dist/cli/bootstrap-owner.js
+docker compose --env-file .env -f docker-compose.images.yml exec -T -w /app/apps/api \
+  -e OWNER_EMAIL -e OWNER_PASSWORD \
+  api node --enable-source-maps dist/cli/bootstrap-owner.js
 unset OWNER_EMAIL OWNER_PASSWORD
 ```
 
-For a source checkout, use `-f infra/compose/docker-compose.yml` instead. This creates an ordinary verified account and a personal workspace, with no server privileges. For an existing unverified account, its password must match before it can be verified; an existing verified account is left unchanged.
-Keep an installation without email on a trusted local network.
+To add several accounts in one exec, omit `OWNER_EMAIL` and pass `email` or `email<TAB>name`
+lines on stdin. When `OWNER_PASSWORD` is unset, the CLI generates a unique password per new
+account and prints it:
+
+```bash
+docker compose --env-file .env -f docker-compose.images.yml exec -T -w /app/apps/api \
+  api node --enable-source-maps dist/cli/bootstrap-owner.js <<'EOF'
+pat@example.com	Pat
+sam@example.com
+EOF
+```
+
+Stdout is TSV (`status`, `email`, `password`): `created`, `verified`, `reset`, or `exists`.
+`OWNER_RESET_PASSWORD=1` sets a new password on an already-verified account. For a source
+checkout, use `-f infra/compose/docker-compose.yml` instead. This creates ordinary verified
+accounts and personal workspaces, with no server privileges. For an existing unverified account,
+its password must match before it can be verified; an existing verified account is left unchanged
+unless you set `OWNER_RESET_PASSWORD`. Keep an installation without email on a trusted local network.
 
 ## Verification and password recovery email
 

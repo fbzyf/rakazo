@@ -49,6 +49,8 @@ import { isCurrentOidcAccount, oidcDiscovery } from "./oidc.js";
 import { passkeyRelyingParty } from "./passkey.js";
 import type { TokenKey } from "./token-storage.js";
 import { encryptStoredOAuthTokens, openIdToken, sealIdToken } from "./token-storage.js";
+import type { WecomConfig } from "./wecom.js";
+import { wecomAuth } from "./wecom.js";
 
 export type { DirectoryAccountChange } from "./directory.js";
 export { createDirectory } from "./directory.js";
@@ -69,6 +71,14 @@ export {
   pluginSubmissionReviewedEmail,
 } from "./plugin-submission-email.js";
 export { referralEmail } from "./referral-email.js";
+export type { WecomConfig } from "./wecom.js";
+export {
+  exchangeWecomAuthorizationCode,
+  rewriteWecomCallbackRequest,
+  WECOM_DEFAULT_AGENT_ID,
+  wecomAuthorizeUrl,
+  wecomConfigFromEnv,
+} from "./wecom.js";
 export { welcomeEmail } from "./welcome-email.js";
 
 export interface AuthEnv {
@@ -77,6 +87,7 @@ export interface AuthEnv {
   /** Opt-in: rejects new passwords found in Have I Been Pwned. Calls an outside service. */
   breachedPasswordCheck?: boolean;
   oidc?: OidcConfig;
+  wecom?: WecomConfig;
   secret: string;
   baseURL: string;
   webOrigin: string;
@@ -415,6 +426,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         env.passwordAuth !== false,
       ),
       identityConfirmation(env.email, emailLocaleOf),
+      wecomAuth(prisma, env),
       ...(discovery ? [discovery.plugin] : []),
       ...(emailCodeSignIn
         ? [

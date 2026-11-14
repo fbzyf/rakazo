@@ -48,7 +48,11 @@ import {
 import type { createSpaceRpc } from "../../lib/rpc";
 import { messageHasVisibleBlocks } from "../../lib/tool-activity-view";
 import { TRANSCRIPT_CONTENT_PADDING } from "../../lib/transcript-layout";
-import { transcriptIsNearEnd, transcriptMovedDown } from "../../lib/transcript-scroll";
+import {
+  transcriptCanSnapAfterFrame,
+  transcriptIsNearEnd,
+  transcriptMovedDown,
+} from "../../lib/transcript-scroll";
 import { TimeSeparator, UnreadDivider } from "./chat-context";
 import type { ImportSetupTarget } from "./import-setup-card";
 import { MessageView } from "./message-view";
@@ -362,16 +366,37 @@ export const Transcript = memo(function Transcript({
       window.removeEventListener("blur", onWindowBlur);
     };
   }, [evaluateSelection, followIfNearEnd]);
+  const followSnapFrame = useRef<number | null>(null);
+  const cancelFollowSnap = useCallback(() => {
+    if (followSnapFrame.current == null) return;
+    cancelAnimationFrame(followSnapFrame.current);
+    followSnapFrame.current = null;
+  }, []);
   const snapToEnd = useCallback(() => {
+    cancelFollowSnap();
     const element = scrollRef.current;
     if (!element) return;
     following.current = true;
     autoScrolling.current = false;
     setAtEnd(true);
     element.scrollTo({ top: element.scrollHeight, behavior: "auto" });
-  }, [scrollRef]);
+  }, [cancelFollowSnap, scrollRef]);
+  const scheduleFollowSnap = useCallback(() => {
+    if (followSnapFrame.current != null) return;
+    const element = scrollRef.current;
+    if (!element) return;
+    const queuedElement = element;
+    const queuedScrollTop = element.scrollTop;
+    followSnapFrame.current = window.requestAnimationFrame(() => {
+      followSnapFrame.current = null;
+      if (!following.current) return;
+      if (!transcriptCanSnapAfterFrame(scrollRef.current, queuedElement, queuedScrollTop)) return;
+      snapToEnd();
+    });
+  }, [scrollRef, snapToEnd]);
 
   const jumpToLatest = useCallback(() => {
+    cancelFollowSnap();
     const element = scrollRef.current;
     if (!element) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -390,7 +415,7 @@ export const Transcript = memo(function Transcript({
       },
       reducedMotion ? 0 : 2_000,
     );
-  }, [scrollRef]);
+  }, [cancelFollowSnap, scrollRef]);
 
   const scrolledJump = useRef<number | null>(null);
   const jumpScrollTimer = useRef<number | undefined>(undefined);
@@ -413,6 +438,7 @@ export const Transcript = memo(function Transcript({
     );
     if (!element || !row) return;
     scrolledJump.current = scrollRequest.nonce;
+    cancelFollowSnap();
     following.current = false;
     autoScrolling.current = false;
     jumpScrolling.current = true;
@@ -433,7 +459,15 @@ export const Transcript = memo(function Transcript({
       { duration: 1200 },
     );
     onScrollRequestHandled();
-  }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled, exchanges.lineOf]);
+  }, [
+    messages,
+    scrollRequest,
+    scrollRef,
+    endJumpScroll,
+    onScrollRequestHandled,
+    exchanges.lineOf,
+    cancelFollowSnap,
+  ]);
 
   const followedRequest = useRef(followRequest);
   useLayoutEffect(() => {
@@ -444,10 +478,10 @@ export const Transcript = memo(function Transcript({
 
   useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (following.current) snapToEnd();
+    if (following.current) scheduleFollowSnap();
     // Content can grow below a reader who is not following without any scroll event.
     else if (element) setAtEnd(transcriptIsNearEnd(element));
-  }, [messages, running, scrollRef, snapToEnd]);
+  }, [messages, running, scrollRef, scheduleFollowSnap]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;
@@ -459,6 +493,7 @@ export const Transcript = memo(function Transcript({
   const loadOlder = useCallback(() => {
     const wasFollowing = following.current;
     // Prepend must not race the messages-driven snap-to-end follow path.
+    cancelFollowSnap();
     following.current = false;
     autoScrolling.current = false;
     const pending = onLoadOlder();
@@ -471,14 +506,15 @@ export const Transcript = memo(function Transcript({
       }
       throw error;
     });
-  }, [onLoadOlder, scrollRef]);
+  }, [cancelFollowSnap, onLoadOlder, scrollRef]);
 
   useEffect(
     () => () => {
       window.clearTimeout(autoScrollTimer.current);
       window.clearTimeout(jumpScrollTimer.current);
+      cancelFollowSnap();
     },
-    [],
+    [cancelFollowSnap],
   );
 
   return (
@@ -490,11 +526,13 @@ export const Transcript = memo(function Transcript({
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
+          cancelFollowSnap();
         }}
         onTouchStart={(event) => {
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
+          cancelFollowSnap();
         }}
         onScrollEnd={followIfNearEnd}
         onWheel={(event) => {
@@ -502,6 +540,7 @@ export const Transcript = memo(function Transcript({
             lastScrollTop.current = event.currentTarget.scrollTop;
             autoScrolling.current = false;
             following.current = false;
+            cancelFollowSnap();
           }
         }}
         onScroll={(event) => {

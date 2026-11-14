@@ -698,6 +698,8 @@ window.fetch = async (input, init) => {
     });
   if (url.pathname === "/rpc/computer/preview")
     return Response.json({ json: { image: `data:image/svg+xml;base64,${btoa(SCREEN_SVG)}` } });
+  if (url.pathname.startsWith("/api/artifacts/"))
+    return new Response(IMAGE_SVG, { headers: { "content-type": "image/svg+xml" } });
   if (url.pathname.startsWith("/rpc/"))
     return Response.json({ json: { message: "Not available in the gallery" } }, { status: 503 });
   return realFetch(input, init);

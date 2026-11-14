@@ -18,6 +18,7 @@ import { queryClient } from "./lib/query";
 import { captureReferral } from "./lib/referral";
 import { applyUiAppearance, watchSystemAppearance } from "./lib/ui-appearance";
 import { resolveUiLocale } from "./lib/ui-locale";
+import { applyWeComWebViewDocument } from "./lib/wecom-webview";
 import { registerServiceWorker } from "./pwa/register";
 import { lockStandaloneZoom } from "./pwa/standalone";
 import "./styles.css";
@@ -29,6 +30,7 @@ registerServiceWorker();
 lockStandaloneZoom();
 applyUiDirection(resolveUiLocale());
 applyUiAppearance();
+applyWeComWebViewDocument();
 captureReferral(window.location.search);
 
 function PerformanceProbe() {

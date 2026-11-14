@@ -266,22 +266,24 @@ export async function getSpaceArtifactById(
   return readArtifact(deps.artifacts, actor, row, row.botId ?? row.groupId ?? row.id);
 }
 
-async function readArtifact(
+type ArtifactRow = {
+  id: string;
+  botId: string | null;
+  groupId: string | null;
+  runId: string | null;
+  storageKey: string;
+  name: string;
+  description: string | null;
+  mimeType: string;
+  size: number;
+  version: number;
+  createdAt: Date;
+};
+
+async function readArtifactBytes(
   artifacts: ArtifactStore,
   actor: Actor,
-  row: {
-    id: string;
-    botId: string | null;
-    groupId: string | null;
-    runId: string | null;
-    storageKey: string;
-    name: string;
-    description: string | null;
-    mimeType: string;
-    size: number;
-    version: number;
-    createdAt: Date;
-  },
+  row: ArtifactRow,
   contextBotId: string,
 ) {
   const bytes = await artifacts.get(
@@ -299,8 +301,37 @@ async function readArtifact(
     size: row.size,
     version: row.version,
     createdAt: row.createdAt.toISOString(),
-    contentBase64: Buffer.from(bytes).toString("base64"),
+    bytes,
   };
+}
+
+async function readArtifact(
+  artifacts: ArtifactStore,
+  actor: Actor,
+  row: ArtifactRow,
+  contextBotId: string,
+) {
+  const { bytes, ...meta } = await readArtifactBytes(artifacts, actor, row, contextBotId);
+  return { ...meta, contentBase64: Buffer.from(bytes).toString("base64") };
+}
+
+/** Same authorization as `getSpaceArtifactById`, with the raw bytes for an HTTP download. */
+export async function loadSpaceArtifactBytes(
+  deps: {
+    prisma: PrismaClient;
+    artifacts: ArtifactStore;
+  },
+  actor: Actor,
+  artifactId: string,
+) {
+  const row = await deps.prisma.artifact.findFirst({
+    where: {
+      id: artifactId,
+      spaceId: actor.spaceId,
+    },
+  });
+  if (!row) throw new IsolationError();
+  return readArtifactBytes(deps.artifacts, actor, row, row.botId ?? row.groupId ?? row.id);
 }
 
 type ListSpaceRow = {

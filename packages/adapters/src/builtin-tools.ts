@@ -27,6 +27,7 @@ import {
 import { z } from "zod";
 import { allowPrivateHttpSecretOrigins } from "./bot-secrets.js";
 import { BROWSER_ACT_KINDS } from "./browser-tools.js";
+import { designCrmVisitGetTool, designCrmVisitSearchTool } from "./design-crm-tools.js";
 import { SCHEDULE_TIMING_FIELDS } from "./schedule-tools.js";
 import { SCRATCHPAD_NOTES_MAX_LENGTH, SCRATCHPAD_TITLE_MAX_LENGTH } from "./scratchpad-tools.js";
 import { messageUserMaxLength } from "./user-progress.js";
@@ -1399,6 +1400,8 @@ export const builtinAgentTools: ConnectorTool[] = [
       required: ["id", "body"],
     },
   },
+  designCrmVisitSearchTool,
+  designCrmVisitGetTool,
   {
     name: "schedule_create",
     description:

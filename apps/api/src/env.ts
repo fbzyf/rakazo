@@ -15,7 +15,8 @@ import {
   secretStoreOptionsFromEnv,
   telegramBotsFromEnv,
 } from "@rakazo/adapters";
-import type { OidcConfig } from "@rakazo/auth";
+import type { OidcConfig, WecomConfig } from "@rakazo/auth";
+import { wecomConfigFromEnv } from "@rakazo/auth";
 import type { MinimumClientBuilds, NavLink } from "@rakazo/contracts";
 import { isPrivateNetworkHost, parseMinimumClientBuilds, parseNavLinks } from "@rakazo/contracts";
 import { parseCrispWebsiteId } from "@rakazo/contracts/content-security-policy";
@@ -43,6 +44,7 @@ export interface AppEnv {
   oidc?: OidcConfig;
   /** Bearer token the identity provider presents to provision accounts over SCIM. */
   scimBearerToken?: string;
+  wecom?: WecomConfig;
   nodeEnv: string;
   desktopStackToken?: string;
   databaseUrl: string;
@@ -236,6 +238,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   const scimBearerToken = optional(source.SCIM_BEARER_TOKEN);
   if (scimBearerToken && (scimBearerToken.length < 32 || /\s/.test(scimBearerToken)))
     throw new Error("SCIM_BEARER_TOKEN must be at least 32 characters with no spaces");
+  const wecom = wecomConfigFromEnv(source);
   const authSecret = resolveAuthSecret(source);
   const webOrigin = resolveWebOrigin(source.WEB_ORIGIN, DEFAULT_WEB_ORIGIN, "WEB_ORIGIN");
   const sandboxProvider = resolveSandboxProvider(source);
@@ -246,6 +249,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     breachedPasswordCheck: source.AUTH_BREACHED_PASSWORD_CHECK_ENABLED === "true",
     oidc,
     scimBearerToken,
+    wecom,
     nodeEnv: source.NODE_ENV ?? "",
     databaseUrl: required(source, "DATABASE_URL"),
     realtimeDatabaseUrl: source.REALTIME_DATABASE_URL ?? required(source, "DATABASE_URL"),

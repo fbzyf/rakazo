@@ -11411,3 +11411,15 @@ msgstr "आपके आवाज़ प्रोवाइडर ने कु�
 #: apps/web/src/components/vault/VaultItemEditor.tsx
 msgid "ZIP or postal code"
 msgstr "ZIP या पिन कोड"
+
+#: apps/web/src/pages/Auth.tsx
+msgid "企微登录"
+msgstr "企微登录"
+
+#: apps/web/src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr "拒绝授权"
+
+#: apps/web/src/lib/user-error.ts
+msgid "未绑定"
+msgstr "未绑定"

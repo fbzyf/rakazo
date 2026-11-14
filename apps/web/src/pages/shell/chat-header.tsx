@@ -7,6 +7,7 @@ import { IconTooltip } from "../../components/IconTooltip";
 import { InviteDialog } from "../../components/InviteDialog";
 import { useBilling } from "../../components/SubscriptionGate";
 import { desktopBridge, windowChromeKind } from "../../lib/desktop";
+import { isWeComWebView } from "../../lib/wecom-webview";
 import { WindowChrome } from "../WindowChrome";
 
 /** The floating header over the transcript: navigation, the chat's name, call and invite. */
@@ -49,7 +50,7 @@ export function ChatHeader({
           size="icon-lg"
           aria-label={t`Open navigation`}
           onClick={onOpenNavigation}
-          className="app-no-drag md:hidden"
+          className={`app-no-drag md:hidden ${isWeComWebView() ? "size-11" : ""}`}
         >
           <Menu strokeWidth={1.7} className="size-[19px]" />
         </Button>

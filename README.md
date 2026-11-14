@@ -353,6 +353,7 @@ Chinese guides cover [self-hosting](./docs/zh-CN/self-host.md), [models](./docs/
 - [Mobile releases](./docs/mobile-release.md)
 - [Performance testing](./docs/performance.md)
 - [Bots that manage bots](./docs/fleet-management.md)
+- [Maintaining this fork](./docs/fork-upgrade.md) (official Rakazo updates plus WeCom, Excel, and CRM work)
 
 ## How Rakazo compares
 

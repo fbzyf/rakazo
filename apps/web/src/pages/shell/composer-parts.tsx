@@ -7,6 +7,7 @@ import { ArrowUp, Box, Paperclip, Settings, Square, X } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
 import type { useHoldToTalk } from "../../components/composer/HoldToTalk";
 import { HoldToTalkControls } from "../../components/composer/HoldToTalk";
+import { isWeComWebView } from "../../lib/wecom-webview";
 import type { PendingAttachment } from "./chat-shared";
 import { MentionOptionIcon, slashActionLabel } from "./composer-mentions";
 
@@ -206,7 +207,7 @@ export function ComposerActions({
       } as CSSProperties)
     : undefined;
   // An empty draft keeps the quiet disabled look either way; the bot's color shows once it can go.
-  const sendClassName = `size-8 shrink-0 rounded-full transition-transform active:scale-95 disabled:bg-primary-disabled disabled:text-foreground/30 disabled:opacity-100 ${sendColors ? "bg-chat-user text-chat-user-foreground hover:bg-chat-user/90" : ""}`;
+  const sendClassName = `${isWeComWebView() ? "size-11" : "size-8"} shrink-0 rounded-full transition-transform active:scale-95 disabled:bg-primary-disabled disabled:text-foreground/30 disabled:opacity-100 ${sendColors ? "bg-chat-user text-chat-user-foreground hover:bg-chat-user/90" : ""}`;
   return (
     <div
       ref={actionsRef}

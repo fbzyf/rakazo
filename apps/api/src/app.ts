@@ -83,6 +83,7 @@ import {
   createAuth,
   createDirectory,
   isBlockedAuthPath,
+  rewriteWecomCallbackRequest,
 } from "@rakazo/auth";
 import type { Actor, AuthCapabilities } from "@rakazo/contracts";
 import {
@@ -127,6 +128,7 @@ import { mountAccountExportRoute } from "./account-export.js";
 import { mountAccountImportRoute } from "./account-import.js";
 import { settleDirectoryChange } from "./account-status.js";
 import { mountAppAssociation, nativePasskeys } from "./app-association.js";
+import { mountArtifactDownloadRoute } from "./artifact-download.js";
 import { storeInboundAttachment } from "./artifacts.js";
 import { mountAuditExportRoute } from "./audit-export.js";
 import { createBillingService } from "./billing.js";
@@ -506,6 +508,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     passwordAuth: env.passwordAuth,
     breachedPasswordCheck: env.breachedPasswordCheck,
     oidc: env.oidc,
+    wecom: env.wecom,
     secret: env.authSecret,
     baseURL: env.authUrl,
     webOrigin: env.webOrigin,
@@ -819,20 +822,21 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     });
   }
   app.get("/api/auth/capabilities", (c) => {
-    return c.json({
-      sso: env.oidc
-        ? { name: env.oidc.name, availability: auth.ssoAvailability() ?? "checking" }
-        : null,
-      passwordAuth: env.passwordAuth !== false,
-      passwordReset: env.passwordAuth !== false && Boolean(email),
-      resetUrl:
-        env.passwordAuth !== false && email ? new URL("/reset-password", env.webOrigin).href : null,
-      emailCode: auth.emailCodeSignIn,
-      billing: Boolean(billing),
-      passkeyRpId: auth.passkeyRpId,
-      nativePasskeys: nativePasskeys(env, auth.passkeyRpId),
-      crispWebsiteId: billing ? (env.crispWebsiteId ?? null) : null,
-    } satisfies AuthCapabilities);
+    return c.json(
+      publicAuthCapabilities({
+        oidc: env.oidc,
+        ssoAvailability: auth.ssoAvailability(),
+        passwordAuth: env.passwordAuth,
+        hasEmail: Boolean(email),
+        emailCode: auth.emailCodeSignIn,
+        billing: Boolean(billing),
+        wecom: Boolean(env.wecom),
+        webOrigin: env.webOrigin,
+        passkeyRpId: auth.passkeyRpId,
+        nativePasskeys: nativePasskeys(env, auth.passkeyRpId),
+        crispWebsiteId: billing ? (env.crispWebsiteId ?? null) : null,
+      }),
+    );
   });
   mountAppAssociation(app, env);
   if (localEmailEmulator && env.nodeEnv === "development") {
@@ -924,6 +928,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       return response;
     });
   }
+  app.get("/api/auth/callback/wecom", (c) =>
+    auth.handler(emptyAuthBodyAsJson(rewriteWecomCallbackRequest(c.req.raw))),
+  );
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
     if (isBlockedAuthPath(path)) {
@@ -1012,6 +1019,17 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   });
   mountAccountExportRoute(app, { prisma, auth, artifacts, home });
   mountAuditExportRoute(app, { prisma, sessionActor });
+  mountArtifactDownloadRoute(app, {
+    prisma,
+    artifacts,
+    actorFor: async (request, spaceId) => {
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user) return null;
+      return actorFromMembership(
+        requireMembership(prisma, session.user.id, spaceId, session.session.id),
+      );
+    },
+  });
   mountVoiceHttpRoutes(app, { prisma, secrets, env }, async (c) => {
     const actor = await sessionActor(c.req.raw);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
@@ -1144,6 +1162,38 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await analytics?.flush();
       await logger.flush({ timeoutMs: 2_000 });
     },
+  };
+}
+
+/** Public `/api/auth/capabilities` body, including the optional WeCom flag. */
+export function publicAuthCapabilities(input: {
+  oidc?: { name: string };
+  ssoAvailability?: "available" | "unavailable" | "checking";
+  passwordAuth?: boolean;
+  hasEmail: boolean;
+  emailCode: boolean;
+  billing: boolean;
+  wecom: boolean;
+  webOrigin: string;
+  passkeyRpId?: string | null;
+  nativePasskeys?: AuthCapabilities["nativePasskeys"];
+  crispWebsiteId?: string | null;
+}): AuthCapabilities {
+  const passwordAuth = input.passwordAuth !== false;
+  return {
+    sso: input.oidc
+      ? { name: input.oidc.name, availability: input.ssoAvailability ?? "checking" }
+      : null,
+    passwordAuth,
+    passwordReset: passwordAuth && input.hasEmail,
+    resetUrl:
+      passwordAuth && input.hasEmail ? new URL("/reset-password", input.webOrigin).href : null,
+    emailCode: input.emailCode,
+    billing: input.billing,
+    wecom: input.wecom,
+    passkeyRpId: input.passkeyRpId ?? null,
+    nativePasskeys: input.nativePasskeys,
+    crispWebsiteId: input.crispWebsiteId ?? null,
   };
 }
 

@@ -218,7 +218,7 @@ secret; the KMS credentials it still holds only work from the server's address
 process unwraps them once at startup. To wrap a value the API already has:
 
 ```bash
-docker compose -f docker-compose.images.yml exec -T api \
+docker compose -f docker-compose.images.yml exec -T -w /app/apps/api api \
   sh -c 'printenv BETTER_AUTH_SECRET | node dist/cli/wrap-env.js BETTER_AUTH_SECRET'
 ```
 

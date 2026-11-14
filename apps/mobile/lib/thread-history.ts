@@ -1,4 +1,8 @@
-import { liveMessageComposing, withLiveStreamingProgress } from "@rakazo/core";
+import {
+  liveMessageComposing,
+  reconcileVisibleThreadSnapshot,
+  withLiveStreamingProgress,
+} from "@rakazo/core";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MobileSnapshot } from "./mobile-types";
@@ -8,7 +12,6 @@ import {
 } from "./response-streaming";
 import type { SavedChatsScope } from "./saved-chats";
 import { ThreadJumpAnchor } from "./thread-jump";
-import { reconcileVisibleThreadSnapshot } from "./thread-snapshot";
 import type { PinnedThreadWindow } from "./thread-window";
 
 /** The chat on screen and the refs that place it on the live thread, loaded history or a pinned page. */

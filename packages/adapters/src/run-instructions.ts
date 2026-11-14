@@ -1,5 +1,6 @@
 import { FLEET_WRITE_TOOL_NAMES } from "@rakazo/contracts";
 import { runReadsThreadHistory, toolRequiresExplicitApproval } from "@rakazo/core";
+import { DESIGN_CRM_VISIT_INSTRUCTION } from "./design-crm-tools.js";
 import { MODEL_CANNOT_SEE_MESSAGE } from "./model-vision.js";
 import { replyGuidanceForOfferedTools } from "./run-replies.js";
 import type { UserComputerState } from "./run-tools-user-computer.js";
@@ -351,9 +352,12 @@ export function userTurnInstructions(parts: {
   /** Whether this turn may start a background helper (only in the bot's own app chat). */
   backgroundHelpersAllowed?: boolean;
   userComputer?: UserComputerState;
+  /** Injected only when Design CRM visit tools are actually offered. */
+  designCrmVisitEnabled?: boolean;
 }): (string | undefined)[] {
   return [
     parts.botInstructions,
+    parts.designCrmVisitEnabled ? DESIGN_CRM_VISIT_INSTRUCTION : undefined,
     parts.historyRetrievalEnabled &&
     builtinOffered(parts.disabledBuiltinTools, "search_history") &&
     builtinOffered(parts.disabledBuiltinTools, "read_history")
