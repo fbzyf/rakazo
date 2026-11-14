@@ -69,7 +69,7 @@ Git 上对应关系：
 随时可以跑下面第 0 步看差距。每周另有一次闹钟，避免人忘了。闹钟不写进 git：在 Cursor 的 Automations 里新建一条定时任务，到点让代理阅读并严格执行 `.agents/skills/fork-catchup/SKILL.md`。
 
 - 名称：每周跟上官方 Rakazo
-- 时间：每周一 09:00，时区选香港。编辑器若按 UTC 填，表达式是 `0 1 * * 1`
+- 时间：每周五 09:00，时区选香港。编辑器若按 UTC 填，表达式是 `0 1 * * 5`
 - 仓库：这个 fork 的 `main`
 - 提示词：阅读并严格执行 `.agents/skills/fork-catchup/SKILL.md`。只报告差距；仅当官方有新的稳定标签时开升级改动。不要合并，不要部署。
 
