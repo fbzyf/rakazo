@@ -132,6 +132,8 @@ describe("tickRoutineWatch", () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const messages: Array<{ role: string; blocks: unknown }> = [];
     const tx = {
+      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 0),
       thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
       message: {
         create: vi.fn(async ({ data }: { data: { role: string; blocks: unknown } }) => {
@@ -185,6 +187,114 @@ describe("tickRoutineWatch", () => {
     return { deps, routine, updateMany, messages };
   }
 
+  it("reschedules temporary HTTP failures at the watch interval without disabling it", async () => {
+    const { deps, routine, updateMany, messages } = setup(
+      {},
+      { kind: "http", url: "https://example.com/status", everyMinutes: 5 },
+    );
+    deps.http = {
+      fetch: async () => new Response("temporary outage", { status: 503 }),
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    };
+    routine.watchState.fingerprint = "last-known";
+    const before = Date.now();
+    expect(await tickRoutineWatch(deps, routine, target, scheduledAt)).toEqual({ run: false });
+    expect(updateMany).toHaveBeenCalledOnce();
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: routine.id, userId: routine.userId, active: true, nextRunAt: scheduledAt },
+      data: {
+        nextRunAt: expect.any(Date),
+        watchState: {
+          checkedAt: expect.any(String),
+          outcome: "failed",
+          retrying: true,
+          fingerprint: "last-known",
+          detail: "HTTPS check returned status 503.",
+        },
+      },
+    });
+    const saved = (
+      updateMany.mock.calls[0] as unknown as [
+        {
+          data: {
+            nextRunAt: Date;
+            watchState: {
+              checkedAt: string;
+              outcome: "failed";
+              fingerprint: string;
+              detail: string;
+            };
+          };
+        },
+      ]
+    )[0].data;
+    const retry = saved.nextRunAt;
+    expect(retry.getTime()).toBeGreaterThanOrEqual(before + 5 * 60_000);
+    expect(retry.getTime()).toBeLessThanOrEqual(Date.now() + 5 * 60_000);
+    expect(messages).toHaveLength(1);
+    expect(JSON.stringify(messages[0])).toContain("HTTPS check returned status 503.");
+    expect(messages[0]?.role).toBe("system");
+    expect(deps.jobs.enqueue).toHaveBeenCalledWith(expect.objectContaining({ availableAt: retry }));
+    expect(new Date(saved.watchState.checkedAt).getTime()).toBeGreaterThanOrEqual(before);
+    // A continuing outage refreshes failure state without another thread notice.
+    await tickRoutineWatch(deps, { ...routine, watchState: saved.watchState }, target, new Date());
+    expect(messages).toHaveLength(1);
+    deps.http.fetch = async () => new Response("ready");
+    const recovered = await tickRoutineWatch(
+      deps,
+      { ...routine, watchState: saved.watchState },
+      target,
+      new Date(),
+    );
+    expect(recovered).toMatchObject({ run: true, state: { outcome: "changed", detail: null } });
+    if (recovered.run) expect(recovered.state).not.toHaveProperty("retrying");
+  });
+
+  it("announces an HTTP outage after a permanently paused watch is resumed", async () => {
+    const { deps, routine, updateMany, messages } = setup(
+      {},
+      {
+        kind: "http",
+        url: "https://example.com/status",
+        everyMinutes: 5,
+      },
+    );
+    deps.http = {
+      fetch: async () => new Response("not found", { status: 404 }),
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    };
+    routine.watchState.fingerprint = "last-known";
+    await tickRoutineWatch(deps, routine, target, scheduledAt);
+    const paused = (
+      updateMany.mock.calls[0] as unknown as [
+        {
+          data: { active: boolean; watchState: unknown };
+        },
+      ]
+    )[0].data;
+    expect(paused.active).toBe(false);
+    expect(paused.watchState).not.toHaveProperty("retrying");
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.role).toBe("bot");
+    // Resuming retains the previous state. A new temporary outage still needs a notice.
+    deps.http.fetch = async () => new Response("temporary outage", { status: 503 });
+    await tickRoutineWatch(deps, { ...routine, watchState: paused.watchState }, target, new Date());
+    expect(messages).toHaveLength(2);
+    expect(messages[1]?.role).toBe("system");
+    expect(JSON.stringify(messages[1])).toContain("HTTPS check returned status 503.");
+    expect(updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          watchState: expect.objectContaining({
+            outcome: "failed",
+            retrying: true,
+            fingerprint: "last-known",
+          }),
+        }),
+      }),
+    );
+  });
+
   it("records a quiet no-change check without a message and schedules the next", async () => {
     const { deps, routine, updateMany, messages } = setup({ data: { changes: [] } });
     // First reading is the baseline.
@@ -207,6 +317,20 @@ describe("tickRoutineWatch", () => {
     );
     expect(deps.jobs.enqueue).toHaveBeenCalledTimes(2);
     expect(messages).toHaveLength(0);
+  });
+
+  it("saves a check only for the owner it started with", async () => {
+    const { deps, routine, updateMany } = setup({ data: { changes: [] } });
+    // Someone else taking the routine over mid-check makes this write miss.
+    updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(tickRoutineWatch(deps, routine, target, scheduledAt)).resolves.toEqual({
+      run: false,
+    });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: routine.id, userId: "user-1", active: true, nextRunAt: scheduledAt },
+      }),
+    );
   });
 
   it("posts 'no changes' when loud", async () => {
@@ -515,6 +639,8 @@ describe("tickRoutineWatch on a computer", () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const messages: unknown[] = [];
     const tx = {
+      $queryRaw: vi.fn(async () => []),
+      $executeRaw: vi.fn(async () => 0),
       thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
       message: {
         create: vi.fn(async ({ data }: { data: unknown }) => {

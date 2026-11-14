@@ -1,4 +1,4 @@
-import type { MobileGroup, MobileSnapshot } from "./api";
+import type { MobileGroup, MobileSnapshot } from "./mobile-types";
 
 /** A group chat's members in its order, once the chat or its group list has loaded them. */
 export function threadGroupMembers(

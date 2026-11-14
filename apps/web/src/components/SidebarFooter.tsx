@@ -12,8 +12,10 @@ import {
 import {
   BookOpen,
   Check,
+  ChevronRight,
   Download,
   FolderOpen,
+  Gauge,
   Link2,
   LogOut,
   Plug,
@@ -24,6 +26,7 @@ import {
   UserPlus,
   UserRound,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Organization } from "../lib/organizations";
 import { useSidebarUpdate } from "./DesktopUpdates";
@@ -45,6 +48,11 @@ type Props = {
   onLink?: (link: NavLink) => void;
   onArtifacts: () => void;
   onSettings: () => void;
+  /** How much of the member's allowance is used; the Usage row shows only with one. */
+  usage?: string | null;
+  /** The breakdown the Usage row opens beside the menu. */
+  usageDetails?: ReactNode;
+  onUsage?: () => void;
   onInvite?: () => void;
   onLogOut: () => void;
   signingOut: boolean;
@@ -75,6 +83,9 @@ export function SidebarFooter({
   onLink,
   onArtifacts,
   onSettings,
+  usage,
+  usageDetails,
+  onUsage,
   onInvite,
   onLogOut,
   signingOut,
@@ -118,7 +129,7 @@ export function SidebarFooter({
         <PopoverTrigger
           data-testid="user-menu-trigger"
           aria-label={t`Account menu for ${name}`}
-          className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-sidebar-accent text-sm font-medium text-foreground outline-none hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-sidebar-accent text-body font-medium text-foreground outline-none hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring"
         >
           {image && failedImage !== image ? (
             <img
@@ -144,9 +155,9 @@ export function SidebarFooter({
               data-testid="account-menu-header"
               className="mb-1 min-w-0 border-b border-border px-2.5 py-2.5"
             >
-              <p className="truncate text-sm font-medium">{name}</p>
+              <p className="truncate text-body font-medium">{name}</p>
               {email && email !== name ? (
-                <p className="truncate text-xs text-muted-foreground">{email}</p>
+                <p className="truncate text-label text-muted-foreground">{email}</p>
               ) : null}
             </div>
             {organizations.length > 1 ? (
@@ -178,6 +189,40 @@ export function SidebarFooter({
                 <Plug className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Connect apps</Trans>
               </Button>
+            ) : null}
+            {usage ? (
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  delay={80}
+                  closeDelay={150}
+                  className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}
+                >
+                  <Gauge className="text-muted-foreground" strokeWidth={1.75} />
+                  <Trans>Usage</Trans>
+                  <span className="ms-auto text-body-sm tabular-nums text-muted-foreground">
+                    {usage}
+                  </span>
+                  <ChevronRight className="text-muted-foreground" strokeWidth={1.75} />
+                </PopoverTrigger>
+                <PopoverContent
+                  data-testid="usage-menu"
+                  side="right"
+                  align="start"
+                  sideOffset={8}
+                  className="w-80 max-w-[calc(100vw-2rem)] gap-0 p-1"
+                >
+                  {usageDetails}
+                  <div className="my-1 border-t border-border" />
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-full justify-start font-normal"
+                    onClick={onUsage}
+                  >
+                    <Trans>View usage</Trans>
+                  </Button>
+                </PopoverContent>
+              </Popover>
             ) : null}
             <Button
               variant="ghost"
@@ -267,7 +312,7 @@ export function SidebarFooter({
               <Trans>Log out</Trans>
             </Button>
             {logOutError ? (
-              <p role="alert" className="px-2.5 pt-1 pb-2 text-[13px] text-destructive">
+              <p role="alert" className="px-2.5 pt-1 pb-2 text-body-sm text-destructive">
                 {logOutError}
               </p>
             ) : null}

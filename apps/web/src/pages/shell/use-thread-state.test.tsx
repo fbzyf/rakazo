@@ -6,7 +6,7 @@ import { act, createElement } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { setResponseStreamingPreference } from "../../lib/response-streaming";
+import { responseStreamingPreference } from "../../lib/response-streaming";
 import { useThreadState } from "./use-thread-state";
 
 let container: HTMLDivElement;
@@ -31,7 +31,7 @@ beforeEach(() => {
     rafHandles.delete(id);
     rafQueue = rafQueue.filter((queued) => queued !== cb);
   });
-  setResponseStreamingPreference("off");
+  responseStreamingPreference.set(false);
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
   document.body.append(container);
@@ -42,7 +42,7 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.unstubAllGlobals();
-  setResponseStreamingPreference("off");
+  responseStreamingPreference.set(false);
 });
 
 function flushFrames() {

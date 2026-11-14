@@ -5,7 +5,7 @@ import {
 } from "@rakazo/core";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { MobileSnapshot } from "./api";
+import type { MobileSnapshot } from "./mobile-types";
 import {
   getCachedResponseStreamingEnabled,
   subscribeResponseStreaming,
@@ -26,6 +26,8 @@ export type ThreadHistory = {
   /** Empties the conversation after it was cleared, dropping loaded history and pending loads. */
   clear: () => void;
   snapRef: RefObject<MobileSnapshot | null>;
+  /** Runs this chat saw finish, so a late send receipt cannot show one as queued again. */
+  terminalRunIds: RefObject<Set<string>>;
   snapshotOrigin: RefObject<SavedChatsScope | null>;
   pendingSave: RefObject<(() => void) | null>;
   expandedHistoryThread: RefObject<string | null>;
@@ -49,6 +51,7 @@ export function useThreadSnapshot(): ThreadHistory {
   const [composingBots, setComposingBots] = useState("");
   const [showingSaved, setShowingSaved] = useState(false);
   const snapRef = useRef<MobileSnapshot | null>(null);
+  const terminalRunIds = useRef(new Set<string>());
   const snapshotOrigin = useRef<SavedChatsScope | null>(null);
   const pendingSave = useRef<(() => void) | null>(null);
   const expandedHistoryThread = useRef<string | null>(null);
@@ -110,6 +113,7 @@ export function useThreadSnapshot(): ThreadHistory {
     commitSnap,
     clear,
     snapRef,
+    terminalRunIds,
     snapshotOrigin,
     pendingSave,
     expandedHistoryThread,
