@@ -300,15 +300,15 @@ export function botsRoutes(ctx: RouterContext) {
     ctx;
   return {
     bots: {
-      list: authed.bots.list.handler(async ({ context }) => repos.listBots(context.actor)),
-      listArchived: authed.bots.listArchived.handler(async ({ context }) =>
-        repos.listBots(context.actor, { archived: true }),
+      list: authed.bots.list.handler(async ({ context, input }) =>
+        repos.listBots(context.actor, { visibility: input?.visibility }),
       ),
-      get: authed.bots.get.handler(async ({ context, input }) => {
-        const found = (await repos.listBots(context.actor)).find((bot) => bot.id === input.botId);
-        if (!found) throw new IsolationError();
-        return found;
-      }),
+      listArchived: authed.bots.listArchived.handler(async ({ context, input }) =>
+        repos.listBots(context.actor, { archived: true, visibility: input?.visibility }),
+      ),
+      get: authed.bots.get.handler(async ({ context, input }) =>
+        repos.listedBot(context.actor, input.botId),
+      ),
       create: authed.bots.create.handler(async ({ context, input }) => {
         let bot: Bot;
         try {
@@ -494,10 +494,7 @@ export function botsRoutes(ctx: RouterContext) {
         for (const setting of changedBotSettings(existing, input)) {
           deps.analytics?.capture(context.actor.userId, { name: "bot_setting_changed", setting });
         }
-        const bots = await repos.listBots(context.actor);
-        const bot = bots.find((b) => b.id === input.botId);
-        if (!bot) throw new IsolationError();
-        return bot;
+        return repos.listedBot(context.actor, input.botId);
       }),
       restoreInstructions: authed.bots.restoreInstructions.handler(async ({ context, input }) => {
         const bot = await repos.getBot(context.actor, input.botId);
@@ -518,7 +515,7 @@ export function botsRoutes(ctx: RouterContext) {
           if (!(error instanceof InstructionConflictError)) throw error;
           throw new ORPCError("CONFLICT", { message: error.message });
         }
-        return (await repos.listBots(context.actor)).find((bot) => bot.id === input.botId)!;
+        return repos.listedBot(context.actor, input.botId);
       }),
       setComputer: authed.bots.setComputer.handler(async ({ context, input }) => {
         const bot = await repos.getBot(context.actor, input.botId);

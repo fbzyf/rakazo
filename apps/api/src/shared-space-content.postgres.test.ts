@@ -228,7 +228,9 @@ describePostgres("shared space content (PostgreSQL)", () => {
 
     const bots = await call(partner, "bots/list");
     expect(bots.status).toBe(200);
-    expect((bots.json as Array<{ id: string }>).map((bot) => bot.id).sort()).toEqual(
+    expect((bots.json as Array<{ id: string }>).map((bot) => bot.id)).toEqual([]);
+    const spaceBots = await call(partner, "bots/list", { visibility: "space" });
+    expect((spaceBots.json as Array<{ id: string }>).map((bot) => bot.id).sort()).toEqual(
       [chef.id, planner.id].sort(),
     );
     expect((await call(partner, "bots/get", { botId: chef.id })).status).toBe(200);
