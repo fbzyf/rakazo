@@ -20,6 +20,8 @@ import { markOnce } from "../../lib/performance";
 import type { ChatTarget } from "../../lib/query";
 import { lastChatKey, queryClient, seedOnLeave, spaceSeedKey } from "../../lib/query";
 import type { createSpaceRpc } from "../../lib/rpc";
+import { selectedSpaceId } from "../../lib/rpc";
+import { readSidebarBotVisibility, rosterVisibilityInput } from "../../lib/sidebar-bot-visibility";
 import { errorText } from "../../lib/user-error";
 import type { RosterDropTarget } from "./roster-drop";
 import { resolveRosterDrop } from "./roster-drop";
@@ -76,6 +78,8 @@ export function useSpaceRoster({
   routeBotId.current = botId;
   const routeGroupId = useRef<string | undefined>(groupId);
   routeGroupId.current = groupId;
+  const spaceIdRef = useRef<string | null>(seed?.me.spaceId ?? selectedSpaceId());
+  spaceIdRef.current = bootstrapMe?.spaceId ?? seed?.me.spaceId ?? selectedSpaceId();
 
   const refreshBots = useCallback(
     async (includeArchived = false, replaceBotOrder = false) => {
@@ -86,9 +90,10 @@ export function useSpaceRoster({
       const archivedRequest = includeArchived ? ++archivedBotsRefreshEpoch.current : null;
       botsRefreshInFlight.current += 1;
       try {
+        const rosterInput = rosterVisibilityInput(readSidebarBotVisibility(spaceIdRef.current));
         const [navigation, archived, archivedGroupList] = await Promise.all([
-          rpc.spaces.list(),
-          includeArchived ? rpc.bots.listArchived() : Promise.resolve(null),
+          rpc.spaces.list(rosterInput),
+          includeArchived ? rpc.bots.listArchived(rosterInput) : Promise.resolve(null),
           includeArchived ? rpc.groups.listArchived() : Promise.resolve(null),
         ]);
         const { bots: list, botSections: sections, groups: groupList } = navigation.current;
@@ -139,8 +144,14 @@ export function useSpaceRoster({
           return;
         }
         const currentBotId = routeBotId.current;
-        if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
+        if (!currentBotId) {
           redirectKeepingOverlay(firstThreadRoute(list, groupList));
+        } else if (!list.some((bot) => bot.id === currentBotId)) {
+          try {
+            await rpc.bots.get({ botId: currentBotId });
+          } catch {
+            redirectKeepingOverlay(firstThreadRoute(list, groupList));
+          }
         }
       } finally {
         botsRefreshInFlight.current -= 1;

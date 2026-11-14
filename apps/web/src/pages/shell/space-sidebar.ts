@@ -44,6 +44,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   query: string,
   labels?: { pinned: string; unassigned: string },
   now = Date.now(),
+  hideEmptySections = false,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -71,7 +72,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     );
     // Keep destinations visible after their last bot is dragged out. Search
     // still hides empty lists, and spaces without sections keep their old layout.
-    if (!needle && space.botSections.length > 0 && grouped.length > 0) {
+    // Mine mode omits empty sections so other people's section names stay out of the list.
+    if (!hideEmptySections && !needle && space.botSections.length > 0 && grouped.length > 0) {
       for (const section of space.botSections) {
         const key = `section:${section.id}`;
         if (!grouped.some((group) => group.key === key)) {
@@ -107,21 +109,24 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
     // Saved sections stay listed under the placeholder so they can still be
     // renamed or deleted after their last chat leaves.
-    const emptySections = needle
-      ? []
-      : space.botSections.map((section) => ({
-          key: showSpaceNames ? `space:${space.id}:section:${section.id}` : `section:${section.id}`,
-          title: showSpaceNames ? space.name : section.name,
-          subtitle: showSpaceNames ? section.name : undefined,
-          bots: [] as (typeof sections)[number]["bots"],
-          sectionId: section.id as string | null,
-          showLock: showSpaceNames,
-          shared: space.shared === true,
-          emptySpaceId: undefined as string | undefined,
-          spaceId: space.id,
-          spaceName: space.name,
-          ...spaceHeaderMenu(space, false),
-        }));
+    const emptySections =
+      needle || hideEmptySections
+        ? []
+        : space.botSections.map((section) => ({
+            key: showSpaceNames
+              ? `space:${space.id}:section:${section.id}`
+              : `section:${section.id}`,
+            title: showSpaceNames ? space.name : section.name,
+            subtitle: showSpaceNames ? section.name : undefined,
+            bots: [] as (typeof sections)[number]["bots"],
+            sectionId: section.id as string | null,
+            showLock: showSpaceNames,
+            shared: space.shared === true,
+            emptySpaceId: undefined as string | undefined,
+            spaceId: space.id,
+            spaceName: space.name,
+            ...spaceHeaderMenu(space, false),
+          }));
     // A lone space is the selected one, so its settings stay in the account menu too.
     const lone = !showSpaceNames && !space.canRename && !space.canDelete;
     if (lone && (needle || emptySections.length > 0)) {

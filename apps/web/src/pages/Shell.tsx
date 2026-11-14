@@ -61,6 +61,7 @@ import { lastChatKey, lastChatOf, queryClient, spaceQueries, spaceSeedKey } from
 import type { Panel } from "../lib/right-panel-state";
 import { rightPanelStorageKey } from "../lib/right-panel-state";
 import { createSpaceRpc, selectedSpaceId } from "../lib/rpc";
+import { sidebarBotVisibilityPreference } from "../lib/sidebar-bot-visibility";
 import { markShellReady, useSpaceEpoch } from "../lib/space-switch";
 import { toolActivityPreference } from "../lib/tool-activity-preference";
 import { useDesktopBadge } from "../lib/use-desktop-badge";
@@ -178,6 +179,32 @@ function SpaceShell() {
     ...groups,
     ...spaces.flatMap((space) => [...space.bots, ...space.groups]),
   ]);
+  const visibilitySpaceId = bootstrapMe?.spaceId ?? shellSpaceId ?? "pending";
+  const botVisibility = sidebarBotVisibilityPreference(visibilitySpaceId).use();
+  const [openedBot, setOpenedBot] = useState<Bot | undefined>();
+  useEffect(() => {
+    const namedBotId = botId ?? startChat?.botId;
+    if (groupId || !namedBotId) {
+      setOpenedBot(undefined);
+      return;
+    }
+    if (bots.some((bot) => bot.id === namedBotId)) {
+      setOpenedBot(undefined);
+      return;
+    }
+    let cancelled = false;
+    void rpc.bots.get({ botId: namedBotId }).then(
+      (bot) => {
+        if (!cancelled) setOpenedBot(bot);
+      },
+      () => {
+        if (!cancelled) setOpenedBot(undefined);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [botId, bots, groupId, rpc, startChat?.botId]);
   const snooze = useChatSnooze({
     rpc,
     openSpaceId: bootstrapMe?.spaceId,
@@ -280,13 +307,16 @@ function SpaceShell() {
       panel === "routine";
   // Until the route names the chat reopened from cache, that chat stands in for it.
   const routeChat = botId || groupId ? undefined : startChat;
+  const namedBotId = botId ?? routeChat?.botId;
   const active =
     inGroup || routeChat?.groupId
       ? undefined
-      : (bots.find((b) => b.id === (botId ?? routeChat?.botId)) ??
-        // With no chat named, open one that's in the list, not a snoozed one.
-        bots.find((b) => !chatSnoozed(b, snoozeNow)) ??
-        bots[0]);
+      : (bots.find((b) => b.id === namedBotId) ??
+        (openedBot?.id === namedBotId ? openedBot : undefined) ??
+        (namedBotId
+          ? undefined
+          : // With no chat named, open one that's in the list, not a snoozed one.
+            (bots.find((b) => !chatSnoozed(b, snoozeNow)) ?? bots[0])));
   const selectBot = useCallback(
     (id: string) => {
       setMobileSidebarOpen(false);
@@ -579,13 +609,17 @@ function SpaceShell() {
         miniSidebar ? "" : search.query,
         { pinned: t`Pinned`, unassigned: t`Unassigned` },
         snoozeNow,
+        botVisibility === "mine",
       ),
-    [sidebarSpaces, search.query, miniSidebar, t, snoozeNow],
+    [sidebarSpaces, search.query, miniSidebar, t, snoozeNow, botVisibility],
   );
   // The Dock badge ignores the roster search box: a filter must not hide unread chats.
   const unreadChatCount = useMemo(
-    () => countUnreadChats(sidebarGroupsForSpaces(sidebarSpaces, "", undefined, snoozeNow)),
-    [sidebarSpaces, snoozeNow],
+    () =>
+      countUnreadChats(
+        sidebarGroupsForSpaces(sidebarSpaces, "", undefined, snoozeNow, botVisibility === "mine"),
+      ),
+    [sidebarSpaces, snoozeNow, botVisibility],
   );
   useDesktopBadge(userId ? unreadChatCount : 0);
   const openSpaceChat = useOpenSpaceChat({
@@ -964,6 +998,12 @@ function SpaceShell() {
         navigate={navigate}
         setNewSpaceOpen={dialogs.setNewSpaceOpen}
         setCreateBotOpen={dialogs.setCreateBotOpen}
+        botVisibility={botVisibility}
+        onToggleBotVisibility={() => {
+          const next = botVisibility === "mine" ? "space" : "mine";
+          sidebarBotVisibilityPreference(visibilitySpaceId).set(next);
+          void refreshBots(true);
+        }}
         roster={
           <SidebarRoster
             mini={miniSidebar}

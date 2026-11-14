@@ -80,6 +80,10 @@ export const InstructionVersionSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Sidebar roster: the signed-in person's bots, or every unarchived bot in the Space. */
+export const BotRosterVisibilitySchema = z.enum(["mine", "space"]);
+export type BotRosterVisibility = z.infer<typeof BotRosterVisibilitySchema>;
+
 export const BotSchema = z.object({
   id: Id,
   spaceId: Id,

@@ -83,6 +83,7 @@ import {
   ArtifactWithContentSchema,
   AvailabilityKindSchema,
   AvatarStyleSchema,
+  BotRosterVisibilitySchema,
   BotSchema,
   BotSectionName,
   BotSectionSchema,
@@ -409,7 +410,9 @@ export const appContract = {
     adoptTimezone: oc.input(z.object({ timezone: TimeZoneSchema })).output(MeSchema),
   },
   spaces: {
-    list: oc.output(SpaceNavigationSchema),
+    list: oc
+      .input(z.object({ visibility: BotRosterVisibilitySchema.optional() }).optional())
+      .output(SpaceNavigationSchema),
     create: oc.input(z.object({ name: spaceName })).output(SpaceSchema),
     rename: oc
       .input(z.object({ spaceId: Id, name: spaceName }))
@@ -453,7 +456,14 @@ export const appContract = {
       .input(z.object({ organizationId: Id }))
       .output(z.object({ ok: z.literal(true), activeSpaceId: Id })),
   },
-  bootstrap: oc.input(z.object({ botId: Id.optional() })).output(AppBootstrapSchema),
+  bootstrap: oc
+    .input(
+      z.object({
+        botId: Id.optional(),
+        visibility: BotRosterVisibilitySchema.optional(),
+      }),
+    )
+    .output(AppBootstrapSchema),
   deployment: {
     get: oc.output(DeploymentSettingsSchema),
     update: oc
@@ -590,8 +600,12 @@ export const appContract = {
       .output(z.object({ ok: z.literal(true) })),
   },
   bots: {
-    list: oc.output(z.array(BotSchema)),
-    listArchived: oc.output(z.array(BotSchema)),
+    list: oc
+      .input(z.object({ visibility: BotRosterVisibilitySchema.optional() }).optional())
+      .output(z.array(BotSchema)),
+    listArchived: oc
+      .input(z.object({ visibility: BotRosterVisibilitySchema.optional() }).optional())
+      .output(z.array(BotSchema)),
     get: oc.input(botId).output(BotSchema),
     create: oc.input(CreateBotInput).output(BotSchema),
     importPreview: oc.input(AgentImportPreviewInput).output(AgentImportPlanSchema),

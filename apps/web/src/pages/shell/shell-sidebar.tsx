@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { Bot, Group, NavLink } from "@rakazo/contracts";
+import type { Bot, BotRosterVisibility, Group, NavLink } from "@rakazo/contracts";
 import { accountDisplay } from "@rakazo/core";
 import {
   Button,
@@ -73,6 +73,8 @@ export function ShellSidebar({
   navigate,
   setNewSpaceOpen,
   setCreateBotOpen,
+  botVisibility,
+  onToggleBotVisibility,
   roster,
   archived,
   footerLogos,
@@ -102,6 +104,8 @@ export function ShellSidebar({
   navigate: (path: string) => void;
   setNewSpaceOpen: (open: boolean) => void;
   setCreateBotOpen: (open: boolean) => void;
+  botVisibility: BotRosterVisibility;
+  onToggleBotVisibility: () => void;
   roster: ReactNode;
   archived: ReactNode;
   footerLogos: Array<{ name: string; logo?: string | null }>;
@@ -286,7 +290,20 @@ export function ShellSidebar({
               }}
             />
           ) : (
-            roster
+            <>
+              {mini ? null : (
+                <button
+                  type="button"
+                  data-testid="sidebar-bot-visibility"
+                  aria-pressed={botVisibility === "mine"}
+                  onClick={onToggleBotVisibility}
+                  className="mb-1 rounded-lg px-2.5 py-1 text-start text-label font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  {botVisibility === "mine" ? t`只看我的助手` : t`看全部`}
+                </button>
+              )}
+              {roster}
+            </>
           )}
         </div>
         {/* One height limit for every shelf, so open shelves never squeeze out the chat list. */}

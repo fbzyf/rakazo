@@ -1,4 +1,4 @@
-import type { Actor } from "@rakazo/contracts";
+import type { Actor, Bot } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createRepos } from "./repos.js";
@@ -48,6 +48,58 @@ function reposFor(memoryScope: string | null) {
 }
 
 describe("createRepos.listBots", () => {
+  it("defaults to the actor's own bots and omits another member's preview", async () => {
+    const findMany = vi.fn(async () => [baseBot]);
+    const prisma = {
+      bot: { findMany },
+      run: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    };
+    await createRepos(prisma as unknown as PrismaClient).listBots(actor);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          archivedAt: null,
+        }),
+      }),
+    );
+    expect(findMany.mock.calls[0]![0].where).not.toHaveProperty("id");
+  });
+
+  it("returns the full space roster when visibility is space", async () => {
+    const findMany = vi.fn(async () => [baseBot]);
+    const prisma = {
+      bot: { findMany },
+      run: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    };
+    await createRepos(prisma as unknown as PrismaClient).listBots(actor, { visibility: "space" });
+    expect(findMany.mock.calls[0]![0].where).toEqual(
+      expect.objectContaining({ spaceId: actor.spaceId, archivedAt: null }),
+    );
+    expect(findMany.mock.calls[0]![0].where).not.toHaveProperty("userId");
+  });
+
+  it("keeps archived lists on the actor's own bots by default", async () => {
+    const findMany = vi.fn(async () => []);
+    const prisma = {
+      bot: { findMany },
+      run: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    };
+    await createRepos(prisma as unknown as PrismaClient).listBots(actor, { archived: true });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: actor.userId,
+          archivedAt: { not: null },
+        }),
+      }),
+    );
+  });
+
   it.each([undefined, "organic", "rakazo"])(
     "preserves appearance metadata on reload (set=%s)",
     async (avatarSet) => {
@@ -507,19 +559,34 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
         }),
       }),
     );
-    expect(query.where).toEqual(expect.objectContaining({ spaceId: { in: ["ws-2"] } }));
+    expect(query.where).toEqual(
+      expect.objectContaining({ spaceId: { in: ["ws-2"] }, userId: "user-1", archivedAt: null }),
+    );
     expect(query.select).not.toHaveProperty("description");
     expect(query.select).not.toHaveProperty("instructions");
     expect(query.select).not.toHaveProperty("computer");
   });
+
+  it("returns every space bot when visibility is space", async () => {
+    const findMany = vi.fn(async () => []);
+    const repos = createRepos({
+      bot: { findMany },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient);
+    await repos.listSpaceBotsForSpaces(["ws-2"], "user-1", { visibility: "space" });
+    expect(findMany.mock.calls[0]![0].where).toEqual(
+      expect.objectContaining({ spaceId: { in: ["ws-2"] }, archivedAt: null }),
+    );
+    expect(findMany.mock.calls[0]![0].where).not.toHaveProperty("userId");
+  });
 });
 
 describe("createRepos.reorderBots", () => {
-  function reorderRepos(ids: string[]) {
+  function reorderRepos(rows: Array<{ id: string; position: number }>) {
     const update = vi.fn().mockResolvedValue({});
     const tx = {
       bot: {
-        findMany: vi.fn().mockResolvedValue(ids.map((id) => ({ id }))),
+        findMany: vi.fn().mockResolvedValue(rows),
         update,
       },
     };
@@ -530,7 +597,10 @@ describe("createRepos.reorderBots", () => {
   }
 
   it("writes each owned bot's requested position", async () => {
-    const { repos, update } = reorderRepos(["bot-1", "bot-2"]);
+    const { repos, update } = reorderRepos([
+      { id: "bot-1", position: 0 },
+      { id: "bot-2", position: 1 },
+    ]);
     await repos.reorderBots(actor, ["bot-2", "bot-1"]);
     expect(update).toHaveBeenNthCalledWith(1, {
       where: { id: "bot-2" },
@@ -542,13 +612,81 @@ describe("createRepos.reorderBots", () => {
     });
   });
 
-  it("rejects partial or foreign bot lists before writing", async () => {
-    const { repos, update } = reorderRepos(["bot-1", "bot-2"]);
-    await expect(repos.reorderBots(actor, ["bot-1"])).rejects.toBeInstanceOf(IsolationError);
+  it("permutes a visible subset across existing position slots", async () => {
+    const { repos, update } = reorderRepos([
+      { id: "A", position: 2 },
+      { id: "B", position: 5 },
+      { id: "C", position: 9 },
+      { id: "D", position: 11 },
+    ]);
+    await repos.reorderBots(actor, ["C", "A", "B"]);
+    expect(update).toHaveBeenNthCalledWith(1, { where: { id: "C" }, data: { position: 2 } });
+    expect(update).toHaveBeenNthCalledWith(2, { where: { id: "A" }, data: { position: 5 } });
+    expect(update).toHaveBeenNthCalledWith(3, { where: { id: "B" }, data: { position: 9 } });
+    expect(update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: "D" } }));
+  });
+
+  it("rejects unknown, duplicate, or foreign bot ids before writing", async () => {
+    const { repos, update } = reorderRepos([
+      { id: "bot-1", position: 0 },
+      { id: "bot-2", position: 1 },
+    ]);
     await expect(repos.reorderBots(actor, ["bot-1", "foreign"])).rejects.toBeInstanceOf(
       IsolationError,
     );
+    await expect(repos.reorderBots(actor, ["bot-1", "bot-1"])).rejects.toBeInstanceOf(
+      IsolationError,
+    );
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("createRepos.listedBot", () => {
+  it("maps a same-space bot with preview without listing the mine roster", async () => {
+    const findFirst = vi.fn(async () => ({ id: "bot-2" }));
+    const findMany = vi.fn(async () => [
+      {
+        ...baseBot,
+        id: "bot-2",
+        userId: "user-2",
+        name: "Partner",
+        thread: {
+          ...baseBot.thread,
+          messages: [],
+        },
+      },
+    ]);
+    const prisma = {
+      bot: { findFirst, findMany },
+      run: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => [
+        {
+          threadId: "thread-1",
+          seq: 1,
+          createdAt: new Date("2026-08-20T00:00:00.000Z"),
+          runId: null,
+          blocks: [{ kind: "text", text: "Hello from Partner" }],
+        },
+      ]),
+    };
+    const bot = await createRepos(prisma as unknown as PrismaClient).listedBot(actor, "bot-2");
+    expect(bot).toMatchObject({
+      id: "bot-2",
+      name: "Partner",
+      preview: "Hello from Partner",
+    } satisfies Partial<Bot>);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "bot-2", spaceId: actor.spaceId, archivedAt: null },
+        include: { thread: true, computer: true },
+      }),
+    );
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "bot-2", spaceId: actor.spaceId }),
+      }),
+    );
+    expect(findMany.mock.calls[0]![0].where).not.toHaveProperty("userId");
   });
 });
 

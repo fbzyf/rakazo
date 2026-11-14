@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import type { Actor, SpaceNavigation } from "@rakazo/contracts";
+import type { Actor, BotRosterVisibility, SpaceNavigation } from "@rakazo/contracts";
 import type { createGroupRepos, createRepos, PrismaClient } from "@rakazo/db";
 import {
   acceptSpaceInvite,
@@ -98,8 +98,8 @@ export function spacesRoutes(ctx: RouterContext) {
       ),
     },
     spaces: {
-      list: authed.spaces.list.handler(async ({ context }) =>
-        spaceNavigationDto(deps, context.actor, repos, groupRepos),
+      list: authed.spaces.list.handler(async ({ context, input }) =>
+        spaceNavigationDto(deps, context.actor, repos, groupRepos, input?.visibility),
       ),
       // Seeds a Space whose id does not exist yet; the member limit is checked inside.
       create: authed.spaces.create.handler(({ context, input }) =>
@@ -333,14 +333,21 @@ export function spacesRoutes(ctx: RouterContext) {
     },
     bootstrap: authed.bootstrap.handler(async ({ context, input }) => {
       const actor = context.actor;
+      const visibility = input.visibility;
       const [me, navigation, archivedBots, archivedGroups] = await Promise.all([
         meDto(deps, actor),
-        spaceNavigationDto(deps, actor, repos, groupRepos),
-        repos.listBots(actor, { archived: true }),
+        spaceNavigationDto(deps, actor, repos, groupRepos, visibility),
+        repos.listBots(actor, { archived: true, visibility }),
         groupRepos.listGroups(actor, { archived: true }),
       ]);
       const { bots, groups, botSections } = navigation.current;
-      const requested = bots.find((bot) => bot.id === input.botId);
+      let requested = input.botId ? bots.find((bot) => bot.id === input.botId) : undefined;
+      if (input.botId && !requested) {
+        requested = await repos.listedBot(actor, input.botId).catch((error: unknown) => {
+          if (error instanceof IsolationError) return undefined;
+          throw error;
+        });
+      }
       const botSpaceId =
         input.botId && !requested
           ? await otherSpaceOfBot(deps.prisma, actor, input.botId)
@@ -377,9 +384,10 @@ function spaceNavigationDto(
   actor: Actor,
   repos: ReturnType<typeof createRepos>,
   groupRepos: ReturnType<typeof createGroupRepos>,
+  visibility?: BotRosterVisibility,
 ): Promise<SpaceNavigation> {
   return runAsSystem("space navigation across the member's Spaces", () =>
-    memberSpaceNavigation(deps, actor, repos, groupRepos),
+    memberSpaceNavigation(deps, actor, repos, groupRepos, visibility),
   );
 }
 
@@ -388,6 +396,7 @@ async function memberSpaceNavigation(
   actor: Actor,
   repos: ReturnType<typeof createRepos>,
   groupRepos: ReturnType<typeof createGroupRepos>,
+  visibility?: BotRosterVisibility,
 ): Promise<SpaceNavigation> {
   // The member's own organization, plus every Space shared with them from someone else's.
   const organizationId = await homeOrganizationId(deps.prisma, actor);
@@ -422,9 +431,9 @@ async function memberSpaceNavigation(
     contentBots,
     contentGroups,
   ] = await Promise.all([
-    repos.listBots(actor),
+    repos.listBots(actor, { visibility }),
     groupRepos.listGroups(actor),
-    repos.listSpaceBotsForSpaces(inactiveSpaceIds, actor.userId),
+    repos.listSpaceBotsForSpaces(inactiveSpaceIds, actor.userId, { visibility }),
     groupRepos.listSpaceGroupsForSpaces(inactiveSpaceIds, actor.userId),
     repos.listBotSectionsForSpaces(spaceIds),
     createExternalConversationRepos(deps.prisma).listForSpaces(spaceIds, actor.userId),
