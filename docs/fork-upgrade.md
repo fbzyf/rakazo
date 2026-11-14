@@ -64,6 +64,17 @@ Git 上对应关系：
 5. **生产不要长期盯着官方 `edge`。** 跟有标签的稳定版（`vX.Y.Z`）。
 6. **钥匙只放在服务器 `.env`。** 仓库里的示例必须是假地址、假 ID。
 
+## 每周自动对照
+
+随时可以跑下面第 0 步看差距。每周另有一次闹钟，避免人忘了。闹钟不写进 git：在 Cursor 的 Automations 里新建一条定时任务，到点让代理阅读并严格执行 `.agents/skills/fork-catchup/SKILL.md`。
+
+- 名称：每周跟上官方 Rakazo
+- 时间：每周一 09:00，时区选香港。编辑器若按 UTC 填，表达式是 `0 1 * * 1`
+- 仓库：这个 fork 的 `main`
+- 提示词：阅读并严格执行 `.agents/skills/fork-catchup/SKILL.md`。只报告差距；仅当官方有新的稳定标签时开升级改动。不要合并，不要部署。
+
+没有新稳定标签的那一周，只更新标题为「每周官方差距」的那条 GitHub issue。官方 main 上还没打标签的提交只记数量，不拿来升级。已经有未合并的 `upgrade/<标签>` 时不要再开一条。
+
 ## 每次升级怎么做
 
 下面两段命令在仓库根目录执行。第一次追官方、以后跟新版本，步骤相同；差别只是冲突多少。
@@ -74,7 +85,7 @@ Git 上对应关系：
 bash scripts/fork-upgrade-status.sh
 ```
 
-它会补上 `upstream` 远程、拉取官方，然后打印：我们相对官方落后多少、自有提交有哪些、官方最新标签是什么。
+它会补上 `upstream` 远程、拉取官方 `v*` 标签，然后打印：我们相对官方 main 落后多少（这只是参考，不表示该升级）、脚下的稳定标签、最新稳定标签、官方 main 比最新稳定标签多几个提交，以及 `Upgrade due`。`Upgrade due: yes` 才需要往下做。
 
 ### 1. 备份正在用的环境
 
@@ -88,19 +99,23 @@ bash scripts/fork-upgrade-status.sh
 
 ### 2. 在副本上叠官方版本
 
-把 `v0.8.0` 换成 `fork-upgrade-status.sh` 打印的目标标签：
+把标签换成 `fork-upgrade-status.sh` 在 `Next:` 一行打印的最新稳定标签：
 
 ```bash
-bash scripts/fork-upgrade-start.sh v0.8.0
+bash scripts/fork-upgrade-start.sh <最新稳定标签>
 ```
 
-脚本会从官方标签新建 `upgrade/v0.8.0`，再按顺序拣入我们的自有提交。
+脚本会从那个官方标签新建 `upgrade/<标签>`，再把「脚下的稳定标签」到当前分支的整棵树差异叠上去，打成一次 `custom:` 提交。
+
+不要改回「把和官方 main 的共同祖先之后的每个提交再拣一遍」。`v0.8.0` 是用合并提交叠上去的，再拣一次会把已经叠过的企业微信提交又拣一遍。
 
 如果停在冲突：
 
-1. 打开列出的文件，官方新代码和我们的接入口都留下。
-2. `git add` 那些文件，然后 `git cherry-pick --continue`。
-3. 只有打算放弃这一整次升级时，才 `git cherry-pick --abort`。
+冲突标记里，`<<<<<<< <新标签>` 那一侧是官方，`=======` 下面是我们现在的 fork。官方新逻辑留下，再把我们的接入口接回去。
+
+1. 打开列出的文件，改完后 `git add` 那些文件。
+2. 按脚本打印的标题提交：`custom: overlay <新标签> on fork work from <旧标签>`。
+3. 只有打算放弃这一整次升级时，才在升级分支上 `git reset --hard`，回到原来的分支，并删除 `upgrade/<标签>`。
 
 企业微信那条迁移文件夹保持原名 `20261022120000_wecom_user_binding`，不要为了「看起来更新」而改名。
 
@@ -173,6 +188,7 @@ pnpm test:e2e -- apps/web/e2e/wecom-webview.spec.ts
 
 ## 这次仓库里多了什么
 
-- `scripts/fork-upgrade-status.sh`：只看差距，不改代码。
-- `scripts/fork-upgrade-start.sh`：从官方标签开工作分支并拣入自有提交。
+- `scripts/fork-upgrade-status.sh`：只看差距，不改代码。会打印脚下的稳定标签、最新稳定标签，以及官方 main 比最新稳定标签多几个提交。
+- `scripts/fork-upgrade-start.sh`：从新的官方稳定标签开工作分支，把脚下标签到当前分支的树差异叠上去。
+- `.agents/skills/fork-catchup/SKILL.md`：每周定时任务要执行的步骤。
 - `.env.example` 里的企业微信回调、CRM 库 ID 和 CRM 允许名单都是空的。真正的值只属于服务器上的 `.env`。
