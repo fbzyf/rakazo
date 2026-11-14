@@ -7,7 +7,7 @@ description: Compare this fork with official Rakazo and, when a newer stable tag
 
 对照官方仓库 `https://github.com/elie222/rakazo.git`，用白话写出我们落下多少。只有官方发布了新的稳定标签（`vX.Y.Z`）时，才开一条待审的升级分支。不要合并，不要部署，不要动正在运行的服务器。
 
-人手执行和 Cursor 每周一定时任务执行，都用这份步骤。定时任务的提示词只负责叫你来读本文件。
+人手执行和 Cursor 每周五定时任务执行，都用这份步骤。定时任务的提示词只负责叫你来读本文件。
 
 ## 停手
 
