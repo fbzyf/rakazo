@@ -78,6 +78,40 @@ describe("sidebarGroupsForSpaces", () => {
     ]);
   });
 
+  it("hides empty sections in mine mode and keeps them in space mode", () => {
+    const input = {
+      ...space("space-1", "Personal"),
+      bots: [{ ...chat("a", "Alpha"), sectionId: "s1" }],
+      groups: [],
+      botSections: [
+        { id: "s1", name: "Projects" },
+        { id: "s2", name: "Empty" },
+      ],
+    };
+    expect(sidebarGroupsForSpaces([input], "").map((group) => group.key)).toEqual([
+      "section:s1",
+      "section:s2",
+      "unassigned",
+    ]);
+    expect(
+      sidebarGroupsForSpaces([input], "", undefined, Date.now(), true).map((group) => group.key),
+    ).toEqual(["section:s1"]);
+  });
+
+  it("still shows a mine-mode section that only has groups", () => {
+    const input = {
+      ...space("space-1", "Personal", { bots: [] }),
+      groups: [{ ...chat("g1", "Kitchen"), sectionId: "s2" }],
+      botSections: [
+        { id: "s1", name: "Empty" },
+        { id: "s2", name: "Team" },
+      ],
+    };
+    expect(
+      sidebarGroupsForSpaces([input], "", undefined, Date.now(), true).map((group) => group.key),
+    ).toEqual(["section:s2"]);
+  });
+
   it("names the only space on the header that holds its menu", () => {
     const [group] = sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "");
 
@@ -199,4 +233,28 @@ it("counts unread bots and groups from the sidebar across spaces", () => {
   input[0]!.bots[0]!.unread = true;
   expect(countUnreadChats(sidebarGroupsForSpaces(input, ""))).toBe(3);
   expect(countUnreadChats([])).toBe(0);
+});
+
+describe("snoozed chats", () => {
+  const now = Date.parse("2026-11-07T12:00:00Z");
+  const snoozed = { ...chat("later", "Later"), snoozedUntil: "2026-11-08T09:00:00.000Z" };
+  const woken = { ...chat("woken", "Woken"), snoozedUntil: "2026-11-07T09:00:00.000Z" };
+  const roster = (query: string) =>
+    sidebarGroupsForSpaces(
+      [space("s", "Home", { bots: [snoozed, woken, chat("plain", "Plain")] })],
+      query,
+      undefined,
+      now,
+    ).flatMap((section) => section.bots.map((item) => ({ id: item.id, woke: item.woke })));
+
+  it("leaves snoozed chats out of the list and marks woken ones", () => {
+    expect(roster("")).toEqual([
+      { id: "woken", woke: true },
+      { id: "plain", woke: false },
+    ]);
+  });
+
+  it("still finds a snoozed chat by search", () => {
+    expect(roster("later")).toEqual([{ id: "later", woke: false }]);
+  });
 });

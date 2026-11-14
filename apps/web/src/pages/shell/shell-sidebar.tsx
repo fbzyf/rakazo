@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { Bot, Group, NavLink } from "@rakazo/contracts";
+import type { Bot, BotRosterVisibility, Group, NavLink } from "@rakazo/contracts";
 import { accountDisplay } from "@rakazo/core";
 import {
   Button,
@@ -10,10 +10,11 @@ import {
   Sidebar,
 } from "@rakazo/ui-web";
 import { Search, SlidersHorizontal } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, UIEvent } from "react";
 import { useState } from "react";
 import { InviteDialog } from "../../components/InviteDialog";
 import { PasskeyOffer } from "../../components/PasskeyOffer";
+import { PlanUsageRows, useUsageHint } from "../../components/PlanUsage";
 import { SidebarFooter } from "../../components/SidebarFooter";
 import { useBilling } from "../../components/SubscriptionGate";
 import { formatBillingDate } from "../../lib/billing";
@@ -35,6 +36,19 @@ export function focusSidebarSearch() {
     input?.focus();
     input?.select();
   });
+}
+
+/**
+ * Chromium keeps the top fade drawn when collapsing sections shrinks a scrolled list until it no
+ * longer scrolls; replaying the fade's scroll-driven animations lets it settle at the top.
+ */
+function resetFadeWhenUnscrollable(event: UIEvent<HTMLDivElement>) {
+  const list = event.currentTarget;
+  if (list.scrollHeight > list.clientHeight) return;
+  for (const animation of list.getAnimations()) {
+    animation.cancel();
+    animation.play();
+  }
 }
 
 type User = { name?: string | null; email?: string; image?: string | null };
@@ -59,6 +73,8 @@ export function ShellSidebar({
   navigate,
   setNewSpaceOpen,
   setCreateBotOpen,
+  botVisibility,
+  onToggleBotVisibility,
   roster,
   archived,
   footerLogos,
@@ -88,6 +104,8 @@ export function ShellSidebar({
   navigate: (path: string) => void;
   setNewSpaceOpen: (open: boolean) => void;
   setCreateBotOpen: (open: boolean) => void;
+  botVisibility: BotRosterVisibility;
+  onToggleBotVisibility: () => void;
   roster: ReactNode;
   archived: ReactNode;
   footerLogos: Array<{ name: string; logo?: string | null }>;
@@ -235,7 +253,10 @@ export function ShellSidebar({
             ) : null}
           </InputGroup>
         )}
-        <div className="rk-scroll scroll-fade-y scroll-fade-12 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        <div
+          onScroll={resetFadeWhenUnscrollable}
+          className="rk-scroll scroll-fade-y scroll-fade-12 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
+        >
           {showSpaceSearch && !mini ? (
             <SpaceSearchResults
               hits={searchHits}
@@ -244,37 +265,56 @@ export function ShellSidebar({
               onRetry={retrySearch}
               onSelect={(hit) => jumpToSearchHit(hit)}
             />
+          ) : activityMode && !mini ? (
+            <ActivityList
+              bots={bots}
+              groups={groups}
+              toggledSections={collapsedSidebarSections}
+              onToggleSection={toggleSidebarSection}
+              onOpenBot={(bot) => {
+                setMobileOpen(false);
+                navigate(`/app/${bot.id}`);
+              }}
+              onOpenGroup={(group) => {
+                setMobileOpen(false);
+                navigate(`/app/g/${group.id}`);
+              }}
+              filters={activityFilters}
+              onFiltersChange={setActivityFilters}
+              filtersExpanded={activityFiltersExpanded}
+              filtersId={activityFiltersId}
+              onOpenRun={(run) => {
+                setMobileOpen(false);
+                if (run.groupId) navigate(`/app/g/${run.groupId}`);
+                else navigate(`/app/${run.botId}`);
+              }}
+            />
           ) : (
             <>
-              {activityMode && !mini ? (
-                <ActivityList
-                  bots={bots}
-                  groups={groups}
-                  toggledSections={collapsedSidebarSections}
-                  onToggleSection={toggleSidebarSection}
-                  onOpenBot={(bot) => {
-                    setMobileOpen(false);
-                    navigate(`/app/${bot.id}`);
-                  }}
-                  onOpenGroup={(group) => {
-                    setMobileOpen(false);
-                    navigate(`/app/g/${group.id}`);
-                  }}
-                  filters={activityFilters}
-                  onFiltersChange={setActivityFilters}
-                  filtersExpanded={activityFiltersExpanded}
-                  filtersId={activityFiltersId}
-                  onOpenRun={(run) => {
-                    setMobileOpen(false);
-                    if (run.groupId) navigate(`/app/g/${run.groupId}`);
-                    else navigate(`/app/${run.botId}`);
-                  }}
-                />
-              ) : null}
+              {mini ? null : (
+                <button
+                  type="button"
+                  data-testid="sidebar-bot-visibility"
+                  aria-pressed={botVisibility === "mine"}
+                  onClick={onToggleBotVisibility}
+                  className="mb-1 rounded-lg px-2.5 py-1 text-start text-label font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  {botVisibility === "mine" ? t`只看我的助手` : t`看全部`}
+                </button>
+              )}
               {roster}
             </>
           )}
-          <div className={mini ? "hidden" : "contents"}>{archived}</div>
+        </div>
+        {/* One height limit for every shelf, so open shelves never squeeze out the chat list. */}
+        <div
+          className={
+            mini || activityMode
+              ? "hidden"
+              : "rk-scroll flex max-h-[40vh] shrink-0 flex-col overflow-y-auto px-2.5 pb-1"
+          }
+        >
+          {archived}
         </div>
         <div className={mini ? "hidden" : "contents"}>
           <PasskeyOffer />
@@ -332,6 +372,7 @@ function ShellSidebarFooter({
     new Date(billing.byokFreeUntil) > new Date()
       ? billing.byokFreeUntil
       : null;
+  const usage = useUsageHint();
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const referral = billing?.referral;
@@ -346,7 +387,7 @@ function ShellSidebarFooter({
   return (
     <>
       {freeUntil && !mini ? (
-        <div className="mx-2.5 flex items-center justify-between gap-2 ps-2.5 text-sm text-muted-foreground">
+        <div className="mx-2.5 flex items-center justify-between gap-2 ps-2.5 text-body text-muted-foreground">
           <span className="min-w-0 truncate">
             <Trans>Free plan ends {day}</Trans>
           </span>
@@ -400,6 +441,12 @@ function ShellSidebarFooter({
         onSettings={() => {
           setMenuOpen(false);
           openSettings("general");
+        }}
+        usage={usage}
+        usageDetails={<PlanUsageRows />}
+        onUsage={() => {
+          setMenuOpen(false);
+          openSettings("usage");
         }}
         onInvite={
           referral

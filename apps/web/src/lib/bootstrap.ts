@@ -5,6 +5,7 @@ import { initialBootstrapTarget } from "./bootstrap-target";
 import { identityLabels } from "./identity-display";
 import { markOnce } from "./performance";
 import { rpc, selectedSpaceId } from "./rpc";
+import { readSidebarBotVisibility, rosterVisibilityInput } from "./sidebar-bot-visibility";
 
 let ticketBoardEnabled = false;
 let maxUploadSizeBytes = ATTACHMENT_MAX_BYTES;
@@ -101,7 +102,10 @@ export function discardPrimedBootstrap(promise: Promise<AppBootstrap>): void {
 
 function requestBootstrap(botId?: string, spaceId?: string) {
   markOnce("rk:renderer:bootstrap-request-start");
-  const input = botId ? { botId } : {};
+  const input = {
+    ...(botId ? { botId } : {}),
+    ...rosterVisibilityInput(readSidebarBotVisibility(spaceId ?? selectedSpaceId())),
+  };
   const request = spaceId ? rpc.bootstrap(input, { context: { spaceId } }) : rpc.bootstrap(input);
   return request.then((bootstrap) => {
     markOnce("rk:renderer:bootstrap-response");

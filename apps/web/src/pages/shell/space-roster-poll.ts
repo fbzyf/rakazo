@@ -1,6 +1,5 @@
 import type { ThreadSnapshot } from "@rakazo/contracts";
-import { isRunWorking } from "@rakazo/core";
-import { activeThreadRuns } from "../../lib/thread-events";
+import { activeThreadRuns, isRunWorking } from "@rakazo/core";
 
 /** True while the open chat has a run that is queued, leased, or running. */
 export function snapshotHasWorkingRun(snapshot: ThreadSnapshot | null): boolean {

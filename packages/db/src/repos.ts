@@ -2,6 +2,7 @@ import type {
   Actor,
   Bot,
   BotAvatarSet,
+  BotRosterVisibility,
   BotSection,
   MessageBlock,
   SpaceBot,
@@ -25,9 +26,10 @@ import {
 import { chooseBotAvatar } from "./bot-avatar-choice.js";
 import type { Prisma, PrismaClient } from "./client.js";
 import type { ComputerMode } from "./computers.js";
-import { ensureComputerRecord, parseComputerMode } from "./computers.js";
+import { ensureComputerRecord, parseComputerMode, teamComputerUserId } from "./computers.js";
 import { createThreadMessageInTransaction } from "./messages.js";
 import { withNewestThreadMessages } from "./preview-messages.js";
+import { isUniqueViolation } from "./prisma-errors.js";
 import { BotSectionNameConflictError, IsolationError } from "./scope.js";
 import { lockSpaceForContentCreation } from "./spaces.js";
 import {
@@ -37,14 +39,11 @@ import {
   threadRunStatus,
   withLatestBotRuns,
 } from "./thread-listing.js";
+import { readStateFor, snoozedUntilFor, unreadFor } from "./thread-reads.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
 /** Newest messages loaded for sidebar preview; enough to skip a short peer-run tail. */
 const SIDEBAR_PREVIEW_MESSAGE_WINDOW = 16;
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
 
 function isBotCreateConflict(error: unknown, clientId?: string): boolean {
   if (!isUniqueViolation(error)) return false;
@@ -78,6 +77,11 @@ function rosterUpdatedAt(newestMessage: { createdAt: Date } | undefined, botUpda
   return newestMessage?.createdAt ?? botUpdatedAt;
 }
 
+/** `mine` (default) is the actor's own bots; `space` is every bot in the Space. */
+function rosterOwnerWhere(userId: string, visibility?: BotRosterVisibility): { userId?: string } {
+  return visibility === "space" ? {} : { userId };
+}
+
 function mapBot(
   bot: {
     id: string;
@@ -96,7 +100,7 @@ function mapBot(
     memoryScope: string | null;
     createdAt: Date;
     updatedAt: Date;
-    thread: { id: string; unread: boolean } | null;
+    thread: { id: string; reads: Array<{ unread: boolean; snoozedUntil: Date | null }> } | null;
     computer: { scope: string } | null;
     voiceId?: string | null;
     autoSpeak?: boolean;
@@ -108,6 +112,7 @@ function mapBot(
     crossSpaceCommunication?: boolean;
     dailyCheckIns?: boolean;
     fleetManagement?: boolean;
+    replyMode?: string;
     disabledBuiltinTools?: string[];
     webhookSecretId?: string | null;
     spawnKey?: string | null;
@@ -135,7 +140,8 @@ function mapBot(
     pinned: bot.pinned,
     sectionId: bot.sectionId,
     archivedAt: bot.archivedAt?.toISOString() ?? null,
-    unread: bot.thread.unread,
+    unread: unreadFor(bot.thread),
+    snoozedUntil: snoozedUntilFor(bot.thread),
     parentBotId: bot.parentBotId,
     memoryScope: bot.memoryScope as "isolated" | "shared" | null,
     threadId: bot.thread.id,
@@ -155,6 +161,7 @@ function mapBot(
     crossSpaceCommunication: bot.crossSpaceCommunication ?? true,
     dailyCheckIns: bot.dailyCheckIns ?? true,
     fleetManagement: bot.fleetManagement ?? true,
+    replyMode: bot.replyMode === "messages" ? "messages" : "chat",
     // Stored lists may name a tool that no longer exists; settings resend what they read.
     disabledBuiltinTools: [...disabledBuiltinToolSet(bot.disabledBuiltinTools)],
     webhookConfigured: Boolean(bot.webhookSecretId),
@@ -168,12 +175,11 @@ export function createRepos(
   capabilities: { phoneCallsEnabled?: boolean; phoneCallRingSeconds?: number } = {},
 ) {
   async function listBotSectionsForSpaces(
-    actor: Actor,
     spaceIds: string[],
   ): Promise<Array<BotSection & { spaceId: string }>> {
     if (spaceIds.length === 0) return [];
     const sections = await prisma.botSection.findMany({
-      where: { spaceId: { in: spaceIds }, userId: actor.userId },
+      where: { spaceId: { in: spaceIds } },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
     return sections.map((section) => ({
@@ -186,13 +192,17 @@ export function createRepos(
     }));
   }
 
-  async function listSpaceBotsForSpaces(actor: Actor, spaceIds: string[]): Promise<SpaceBot[]> {
+  async function listSpaceBotsForSpaces(
+    spaceIds: string[],
+    userId: string,
+    options: { visibility?: BotRosterVisibility } = {},
+  ): Promise<SpaceBot[]> {
     if (spaceIds.length === 0) return [];
     const rows = await prisma.bot.findMany({
       where: {
         spaceId: { in: spaceIds },
-        userId: actor.userId,
         archivedAt: null,
+        ...rosterOwnerWhere(userId, options.visibility),
       },
       select: {
         id: true,
@@ -205,12 +215,7 @@ export function createRepos(
         sectionId: true,
         updatedAt: true,
         parentBotId: true,
-        thread: {
-          select: {
-            id: true,
-            unread: true,
-          },
-        },
+        thread: { select: { id: true, reads: readStateFor(userId) } },
         runs: activeRunSelection,
       },
       orderBy: [{ pinned: "desc" }, { position: "asc" }, { createdAt: "asc" }],
@@ -229,7 +234,8 @@ export function createRepos(
         notifyOnFinish: bot.notifyOnFinish,
         pinned: bot.pinned,
         sectionId: bot.sectionId,
-        unread: bot.thread.unread,
+        unread: unreadFor(bot.thread),
+        snoozedUntil: snoozedUntilFor(bot.thread),
         parentBotId: bot.parentBotId,
         preview: previewFromBlocks(bot.thread.messages[0]?.blocks),
         status: activeRun?.status ?? "idle",
@@ -240,9 +246,9 @@ export function createRepos(
     });
   }
 
-  return {
+  const api = {
     async listBotSections(actor: Actor): Promise<BotSection[]> {
-      return listBotSectionsForSpaces(actor, [actor.spaceId]);
+      return listBotSectionsForSpaces([actor.spaceId]);
     },
 
     listBotSectionsForSpaces,
@@ -258,7 +264,6 @@ export function createRepos(
               where: {
                 id: input.botId,
                 spaceId: actor.spaceId,
-                userId: actor.userId,
                 archivedAt: null,
               },
               select: { id: true },
@@ -267,35 +272,33 @@ export function createRepos(
               where: {
                 id: input.groupId,
                 spaceId: actor.spaceId,
-                userId: actor.userId,
                 archivedAt: null,
               },
               select: { id: true },
             });
         if (!target) throw new IsolationError();
 
-        const aggregate = await tx.botSection.aggregate({
-          where: { spaceId: actor.spaceId, userId: actor.userId },
-          _max: { position: true },
-        });
-        await tx.botSection.createMany({
-          data: {
-            spaceId: actor.spaceId,
-            userId: actor.userId,
-            name,
-            position: (aggregate._max.position ?? -1) + 1,
-          },
-          skipDuplicates: true,
-        });
-        const section = await tx.botSection.findUniqueOrThrow({
-          where: {
-            spaceId_userId_name: {
+        // Sections belong to the space: a name another member already used is the same section.
+        await lockSpaceForContentCreation(tx, actor);
+        const section =
+          (await tx.botSection.findFirst({
+            where: { spaceId: actor.spaceId, name },
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          })) ??
+          (await tx.botSection.create({
+            data: {
               spaceId: actor.spaceId,
               userId: actor.userId,
               name,
+              position:
+                ((
+                  await tx.botSection.aggregate({
+                    where: { spaceId: actor.spaceId },
+                    _max: { position: true },
+                  })
+                )._max.position ?? -1) + 1,
             },
-          },
-        });
+          }));
         if (input.botId) {
           await tx.bot.update({ where: { id: target.id }, data: { sectionId: section.id } });
         } else {
@@ -315,42 +318,37 @@ export function createRepos(
     },
 
     async updateBotSection(actor: Actor, input: { sectionId: string; name: string }) {
-      const existing = await prisma.botSection.findFirst({
-        where: {
-          id: input.sectionId,
-          spaceId: actor.spaceId,
-          userId: actor.userId,
-        },
-      });
-      if (!existing) throw new IsolationError();
-      if (existing.name === input.name) {
-        return {
-          id: existing.id,
-          name: existing.name,
-          position: existing.position,
-          createdAt: existing.createdAt.toISOString(),
-          updatedAt: existing.updatedAt.toISOString(),
-        } satisfies BotSection;
-      }
-      try {
-        const section = await prisma.botSection.update({
+      const section = await prisma.$transaction(async (tx) => {
+        const existing = await tx.botSection.findFirst({
+          where: {
+            id: input.sectionId,
+            spaceId: actor.spaceId,
+          },
+        });
+        if (!existing) throw new IsolationError();
+        if (existing.name === input.name) return existing;
+        // Serializes with section creation so two members cannot both end up with one name.
+        await lockSpaceForContentCreation(tx, actor);
+        const taken = await tx.botSection.findFirst({
+          where: { spaceId: actor.spaceId, name: input.name, id: { not: existing.id } },
+          select: { id: true },
+        });
+        if (taken) throw new BotSectionNameConflictError();
+        return tx.botSection.update({
           where: { id: existing.id },
           data: { name: input.name },
         });
-        return {
-          id: section.id,
-          name: section.name,
-          position: section.position,
-          createdAt: section.createdAt.toISOString(),
-          updatedAt: section.updatedAt.toISOString(),
-        } satisfies BotSection;
-      } catch (error) {
-        if (isUniqueViolation(error)) throw new BotSectionNameConflictError();
-        throw error;
-      }
+      });
+      return {
+        id: section.id,
+        name: section.name,
+        position: section.position,
+        createdAt: section.createdAt.toISOString(),
+        updatedAt: section.updatedAt.toISOString(),
+      } satisfies BotSection;
     },
 
-    /** Delete one of the actor's sections; its bots and groups stay, unsectioned (FK SetNull). */
+    /** Delete one of the space's sections; its bots and groups stay, unsectioned (FK SetNull). */
     async deleteBotSection(actor: Actor, input: { sectionId: string }) {
       return prisma.$transaction(async (tx) => {
         // The row lock blocks concurrent moves into this section until the delete commits.
@@ -359,7 +357,6 @@ export function createRepos(
           FROM bot_sections
           WHERE id = ${input.sectionId}
             AND "spaceId" = ${actor.spaceId}
-            AND "userId" = ${actor.userId}
           FOR UPDATE
         `;
         if (locked.length !== 1) throw new IsolationError();
@@ -371,7 +368,15 @@ export function createRepos(
       });
     },
 
-    async listBots(actor: Actor, options: { archived?: boolean } = {}): Promise<Bot[]> {
+    async listBots(
+      actor: Actor,
+      options: {
+        archived?: boolean;
+        visibility?: BotRosterVisibility;
+        /** One same-space bot; skips the mine filter so get/update can map it. */
+        botId?: string;
+      } = {},
+    ): Promise<Bot[]> {
       const bots = await withNewestThreadMessages(
         prisma,
         await withLatestBotRuns(
@@ -379,11 +384,12 @@ export function createRepos(
           await prisma.bot.findMany({
             where: {
               spaceId: actor.spaceId,
-              userId: actor.userId,
               archivedAt: options.archived ? { not: null } : null,
+              ...(options.botId ? { id: options.botId } : {}),
+              ...(options.botId ? {} : rosterOwnerWhere(actor.userId, options.visibility)),
             },
             include: {
-              thread: true,
+              thread: { include: { reads: readStateFor(actor.userId) } },
               runs: activeRunSelection,
               computer: { select: { scope: true } },
             },
@@ -503,12 +509,18 @@ export function createRepos(
 
     listSpaceBotsForSpaces,
 
+    async listedBot(actor: Actor, botId: string): Promise<Bot> {
+      await api.getBot(actor, botId);
+      const [bot] = await api.listBots(actor, { botId });
+      if (!bot) throw new IsolationError();
+      return bot;
+    },
+
     async getBot(actor: Actor, botId: string, options: { includeArchived?: boolean } = {}) {
       const bot = await prisma.bot.findFirst({
         where: {
           id: botId,
           spaceId: actor.spaceId,
-          userId: actor.userId,
           ...(options.includeArchived ? {} : { archivedAt: null }),
         },
         include: { thread: true, computer: true },
@@ -527,6 +539,7 @@ export function createRepos(
         notifyOnFinish: boolean;
         dailyCheckIns?: boolean;
         fleetManagement?: boolean;
+        replyMode?: string;
         color?: string;
         avatarSet?: BotAvatarSet;
         /** Copy a pin as is (duplicates); otherwise a set other than the default pins the bot. */
@@ -560,7 +573,6 @@ export function createRepos(
           where: {
             id: input.parentBotId,
             spaceId: actor.spaceId,
-            userId: actor.userId,
           },
         });
         if (!parent) throw new IsolationError();
@@ -588,7 +600,7 @@ export function createRepos(
             userId: actor.userId,
           });
           const positions = await tx.bot.aggregate({
-            where: { spaceId: actor.spaceId, userId: actor.userId },
+            where: { spaceId: actor.spaceId },
             _max: { position: true },
           });
           // A bot follows its owner's default set unless created with another, which pins it.
@@ -603,7 +615,7 @@ export function createRepos(
           const avatar = chooseBotAvatar(
             avatarSet === "organic"
               ? await tx.bot.findMany({
-                  where: { spaceId: actor.spaceId, userId: actor.userId, archivedAt: null },
+                  where: { spaceId: actor.spaceId, archivedAt: null },
                   select: { id: true, color: true },
                 })
               : [],
@@ -613,7 +625,7 @@ export function createRepos(
           const teamComputer = await ensureComputerRecord(tx, {
             mode: "team",
             spaceId: actor.spaceId,
-            userId: actor.userId,
+            userId: await teamComputerUserId(tx, actor),
             kind,
           });
           const created = await tx.bot.create({
@@ -627,6 +639,7 @@ export function createRepos(
               notifyOnFinish: input.notifyOnFinish,
               dailyCheckIns: input.dailyCheckIns,
               fleetManagement: input.fleetManagement,
+              replyMode: input.replyMode,
               color: avatar.color,
               avatarSet,
               avatarSetPinned: input.avatarSetPinned ?? avatarSet !== defaultSet,
@@ -684,7 +697,7 @@ export function createRepos(
           await input.seed?.(tx, created.id);
           return tx.bot.findFirstOrThrow({
             where: { id: created.id },
-            include: { thread: true, computer: true },
+            include: { thread: { include: { reads: readStateFor(actor.userId) } }, computer: true },
           });
         });
 
@@ -697,7 +710,7 @@ export function createRepos(
               spawnKey,
             },
           },
-          include: { thread: true, computer: true },
+          include: { thread: { include: { reads: readStateFor(actor.userId) } }, computer: true },
         });
       };
 
@@ -709,7 +722,6 @@ export function createRepos(
         const existing = await findBySpawnKey();
         if (
           !existing ||
-          existing.userId !== actor.userId ||
           (input.id !== undefined && (existing.id !== input.id || existing.archivedAt))
         )
           throw error;
@@ -727,7 +739,7 @@ export function createRepos(
           } catch (retryError) {
             if (!isBotCreateConflict(retryError)) throw retryError;
             const winner = await findBySpawnKey();
-            if (!winner || winner.userId !== actor.userId || winner.archivedAt) throw retryError;
+            if (!winner || winner.archivedAt) throw retryError;
             bot = winner;
           }
         }
@@ -737,51 +749,60 @@ export function createRepos(
 
     async reorderBots(actor: Actor, botIds: string[]): Promise<void> {
       await prisma.$transaction(async (tx) => {
+        const unique = new Set(botIds);
+        if (unique.size !== botIds.length) throw new IsolationError();
         const bots = await tx.bot.findMany({
           where: {
             spaceId: actor.spaceId,
-            userId: actor.userId,
             archivedAt: null,
           },
-          select: { id: true },
+          select: { id: true, position: true },
         });
-        const existing = new Set(bots.map((bot) => bot.id));
-        if (existing.size !== botIds.length || botIds.some((id) => !existing.has(id))) {
-          throw new IsolationError();
-        }
-        // ponytail: rosters are small; switch to one SQL CASE update only if this becomes hot.
+        const byId = new Map(bots.map((bot) => [bot.id, bot]));
+        if (botIds.some((id) => !byId.has(id))) throw new IsolationError();
+        const slots = botIds
+          .map((id) => byId.get(id)!.position)
+          .sort((left, right) => left - right);
         await Promise.all(
-          botIds.map((id, position) => tx.bot.update({ where: { id }, data: { position } })),
+          botIds.map((id, index) =>
+            tx.bot.update({ where: { id }, data: { position: slots[index] } }),
+          ),
         );
       });
     },
 
     async setBotComputer(actor: Actor, botId: string, mode: ComputerMode): Promise<Bot> {
       const bot = await prisma.bot.findFirst({
-        where: { id: botId, spaceId: actor.spaceId, userId: actor.userId },
+        where: { id: botId, spaceId: actor.spaceId },
         include: { computer: true },
       });
       if (!bot?.computer) throw new IsolationError();
       const kind = bot.computer.kind;
       // Keep ensure + bot link in one transaction so a capped quota lock covers
       // both steps (a computer row alone does not count until a live bot refs it).
+      // A private computer stays with the bot's creator, whoever in the space changes the mode;
+      // the team one is the Space's.
       const updated = await withTransactionRetry(() =>
         prisma.$transaction(async (tx) => {
           const computer = await ensureComputerRecord(tx, {
             mode,
             spaceId: actor.spaceId,
-            userId: actor.userId,
+            userId:
+              mode === "team"
+                ? await teamComputerUserId(tx, { spaceId: actor.spaceId, userId: bot.userId })
+                : bot.userId,
             botId,
             kind,
           });
           return tx.bot.update({
             where: { id: botId },
             data: { computerId: computer.id },
-            include: { thread: true, computer: true },
+            include: { thread: { include: { reads: readStateFor(actor.userId) } }, computer: true },
           });
         }),
       );
       return mapBot(updated);
     },
   };
+  return api;
 }

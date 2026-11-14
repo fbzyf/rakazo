@@ -7,7 +7,12 @@ import type {
   SandboxProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
-import { routineJobKey, runContinueJob, runJobKey } from "@rakazo/adapter-kit";
+import {
+  isSandboxProviderOutage,
+  routineJobKey,
+  runContinueJob,
+  runJobKey,
+} from "@rakazo/adapter-kit";
 import type { Actor, Bot, ComputerMode } from "@rakazo/contracts";
 import {
   BOT_DESCRIPTION_MAX_LENGTH,
@@ -26,6 +31,8 @@ import {
   expireComputerExecutionLeases,
   legacyTeamHomeKey,
   recordComputerRunEnd,
+  THREAD_LOCK_TRANSACTION_OPTIONS,
+  teamComputerUserId,
   withTransactionRetry,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -230,21 +237,17 @@ type LifecycleBot = {
   webhookSecretId?: string | null;
 };
 
-/** Management stays within the current user's space, regardless of who created the bot. */
-export function managedBotsWhere(caller: {
-  userId: string;
-  spaceId: string;
-}): Prisma.BotWhereInput {
-  return { userId: caller.userId, spaceId: caller.spaceId };
+/** Management stays within the current space, whichever member created the bot. */
+export function managedBotsWhere(caller: { spaceId: string }): Prisma.BotWhereInput {
+  return { spaceId: caller.spaceId };
 }
 
-/** Creation provenance for the roster metadata; this does not grant management permissions. */
-export function createdByWhere(caller: {
-  botId: string;
-  userId: string;
-  spaceId: string;
-}): Prisma.BotWhereInput {
-  return { parentBotId: caller.botId, userId: caller.userId, spaceId: caller.spaceId };
+/**
+ * Creation provenance for the roster metadata, whichever member's run spawned the bot; this
+ * does not grant management permissions.
+ */
+export function createdByWhere(caller: { botId: string; spaceId: string }): Prisma.BotWhereInput {
+  return { parentBotId: caller.botId, spaceId: caller.spaceId };
 }
 
 export async function archiveSpawnedBot(
@@ -425,6 +428,7 @@ export async function destroyBot(
   }
   // Keep the bot deletion transaction from committing if raw transcript cleanup fails.
   await removePiBotSessions(deps.dataDir, bot.userId, bot.id);
+  // Deleting the bot deletes its thread, so this waits out snapshot reads holding that row.
   const deletion = await withTransactionRetry(() =>
     deps.prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string; webhookSecretId: string | null }>>`
@@ -493,7 +497,7 @@ export async function destroyBot(
         cancelledGroupRuns: groupCleanup.cancelledRuns,
         pageShareSecrets: [...pageShareSecrets, ...groupCleanup.pageShareSecrets],
       };
-    }),
+    }, THREAD_LOCK_TRANSACTION_OPTIONS),
   );
   if (!deletion) return;
   await Promise.allSettled(
@@ -534,6 +538,43 @@ export async function destroyBot(
   if (deps.secretStore) await forgetPageShareSecrets(deps.secretStore, deletion.pageShareSecrets);
 }
 
+type DissolvableGroup = {
+  members: ReadonlyArray<{ botId: string; bot: { archivedAt: Date | null } }>;
+};
+
+/**
+ * Groups left with fewer than two active bots once `botId` is gone.
+ * Removal and its preview both decide here, so the warning names what the delete removes.
+ */
+function groupsDissolvedByRemovingBot<T extends DissolvableGroup>(
+  groups: readonly T[],
+  botId: string,
+): T[] {
+  return groups.filter((group) => {
+    const activeMembersAfterDeletion = group.members.filter(
+      (member) => member.botId !== botId && member.bot.archivedAt === null,
+    ).length;
+    return activeMembersAfterDeletion < GROUP_MEMBER_MIN;
+  });
+}
+
+/** The groups `destroyBot` dissolves for this bot, as `{ id, name }`. Read-only. */
+export async function groupsRemovedByDeletingBot(prisma: PrismaClient, botId: string) {
+  const groups = await prisma.chatGroup.findMany({
+    where: { members: { some: { botId } } },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      members: { select: { botId: true, bot: { select: { archivedAt: true } } } },
+    },
+  });
+  return groupsDissolvedByRemovingBot(groups, botId).map((group) => ({
+    id: group.id,
+    name: group.name,
+  }));
+}
+
 async function detachBotFromGroups(tx: Prisma.TransactionClient, botId: string) {
   await tx.$queryRaw<Array<{ id: string }>>`
     SELECT groups.id
@@ -552,15 +593,9 @@ async function detachBotFromGroups(tx: Prisma.TransactionClient, botId: string) 
       thread: { select: { id: true } },
     },
   });
-  const dissolvedGroupIds: string[] = [];
-  for (const group of affectedGroups) {
-    const activeMembersAfterDeletion = group.members.filter(
-      (member) => member.botId !== botId && member.bot.archivedAt === null,
-    ).length;
-    if (activeMembersAfterDeletion < GROUP_MEMBER_MIN) {
-      dissolvedGroupIds.push(group.id);
-    }
-  }
+  const dissolvedGroupIds = groupsDissolvedByRemovingBot(affectedGroups, botId).map(
+    (group) => group.id,
+  );
   const dissolvedGroupIdSet = new Set(dissolvedGroupIds);
   const dissolvedThreadIds = affectedGroups
     .filter((group) => dissolvedGroupIdSet.has(group.id))
@@ -647,6 +682,7 @@ function releasedComputerLease() {
   return {
     controlHolder: "none" as const,
     controlLeaseId: null,
+    controlUserId: null,
     controlLeaseExpiresAt: null,
     controlBotId: null,
     controlRunId: null,
@@ -681,7 +717,8 @@ async function releaseTeamComputerScreen(
   } catch (error) {
     // No browser runs on a sandbox that is gone, so only its stored profile is left to remove.
     if (isSandboxGoneError(error)) return { ...computer, providerRef: null };
-    getLogger().error("team screen release", error);
+    if (isSandboxProviderOutage(error)) getLogger().warn("team screen release", { error });
+    else getLogger().error("team screen release", error);
     if (error instanceof BrowserStoppedReleaseError) return computer;
     return null;
   }
@@ -702,11 +739,13 @@ async function sharedTeamComputer(
 const REMOTE_TEAM_SANDBOX_KINDS = new Set([
   "e2b",
   "novita",
+  "instabox",
   "daytona",
   "boat",
   "createos",
   "kubernetes",
   "incus",
+  "local-vm",
 ]);
 
 /**
@@ -805,14 +844,15 @@ async function removeTeamBotWorkspace(
   context: AdapterContext,
 ) {
   if (!isTeamBotFolderName(bot.id)) return;
-  // Look the owner's Team Computer up by scope: a bot moved to its own computer can still have
+  // Look the Space's Team Computer up by scope: a bot moved to its own computer can still have
   // a folder there. The space's Team Computer from before each person got their own still holds
   // the folders and browser profiles of every member's bots from then. Any other team computer
   // in the space drops them on boot (botDeletion).
+  const teamUserId = await teamComputerUserId(deps.prisma, bot);
   const [own, legacy] = await Promise.all([
     deps.prisma.computer.findUnique({
       where: {
-        scopeKey: computerScopeKey({ mode: "team", spaceId: bot.spaceId, userId: bot.userId }),
+        scopeKey: computerScopeKey({ mode: "team", spaceId: bot.spaceId, userId: teamUserId }),
       },
     }),
     deps.prisma.computer.findUnique({ where: { homeKey: legacyTeamHomeKey(bot.spaceId) } }),
