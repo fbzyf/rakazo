@@ -4945,10 +4945,6 @@ msgstr "置頂"
 msgid "Plan"
 msgstr "方案"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "播放 {name}"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "播放中…"

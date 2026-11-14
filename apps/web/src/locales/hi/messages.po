@@ -4944,10 +4944,6 @@ msgstr "पिन किए गए"
 msgid "Plan"
 msgstr "प्लान"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} चलाएँ"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "प्ले हो रहा है…"
