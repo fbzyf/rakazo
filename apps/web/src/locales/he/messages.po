@@ -3098,6 +3098,10 @@ msgstr "כל חודש"
 msgid "Every week"
 msgstr "כל שבוע"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "כל מי שיכול להתחבר"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
 msgstr "טוקן Executor"
@@ -4908,8 +4912,8 @@ msgid "Pending"
 msgstr ""
 
 #: src/pages/shell/bot-templates-dialog.tsx
-msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
-msgstr "אנשים במרחב הזה יכולים ליצור ממנו בוט משלהם. הם מקבלים את ההנחיות ואת לוחות הזמנים. הצ'אטים, הזיכרון והכניסות השמורות נשארים אצלך."
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "מי שרשאי לראות את התבנית הזו יכול לקרוא את השם, התיאור וההוראות. אל תכלול סיסמאות, סודות או נתוני לקוחות."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -6465,6 +6469,10 @@ msgstr "לא ניתן לקרוא את ההגדרות השמורות. יש להס
 msgid "They get {weeks} weeks free."
 msgstr "הם מקבלים {weeks} שבועות בחינם."
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "הם מקבלים עותק משלהם. לוחות הזמנים מתחילים מושהים. הצ'אטים, הזיכרון והכניסות השמורות נשארים אצלך."
+
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6629,6 +6637,10 @@ msgstr "התחברות עם המנוי הזה עדיין לא זמינה ב-Raka
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "השבוע"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "סביבת העבודה הזו"
 
 #: src/lib/cron.ts
 msgid "Thursday"
@@ -7148,6 +7160,10 @@ msgstr "איפה הבוטים ירוצו?"
 #: src/components/pages/SharePopover.tsx
 msgid "Who can open this page"
 msgstr "מי יכול לפתוח את הדף הזה"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "מי יכול להשתמש"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

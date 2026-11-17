@@ -13,16 +13,19 @@ sign-in or an app to connect.
 
 ## Share a bot as a template
 
-People in the same space can copy a bot's setup. Another space cannot see it.
-
 Choose **Create**, then **Bot templates**, and pick a card. You get your own bot: the name,
 description, instructions, and look. Recurring schedules come along and start paused, so nothing
 runs until you turn one on. On a phone, **Bot templates** is in the same create menu.
 
 To publish one of your bots, right-click it and choose **Share as template**. On a phone, open the
-bot and choose **Share as template**. Colleagues get the instructions and schedules. Chats, memory,
-files, and saved sign-ins stay on your bot. Changing your bot later does not change copies people
-already made. Publish again to update the template, or remove it. Copies that were already made stay.
+bot and choose **Share as template**. Before it is saved, choose who can see it. **This workspace**
+is the default: only people in that workspace can copy it. **Everyone who can log in** lets anyone
+who can sign in to this Rakazo copy it. It is not visible on the open internet.
+
+The name, description, and instructions are readable by whoever you allow, so do not put passwords,
+secrets, or customer data in them. Chats, memory, files, and saved sign-ins stay on your bot.
+Changing your bot later does not change copies people already made. Publish again to update the
+template, or remove it. Copies that were already made stay.
 
 > [!TIP]
 > One bot per job works best: an inbox bot, a research bot, a bot for one client. Each keeps its own

@@ -3098,6 +3098,10 @@ msgstr "每月"
 msgid "Every week"
 msgstr "每周"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "所有已登录的人"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
 msgstr "Executor 令牌"
@@ -4908,8 +4912,8 @@ msgid "Pending"
 msgstr "待处理"
 
 #: src/pages/shell/bot-templates-dialog.tsx
-msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
-msgstr "这个工作区里的人可以据此创建自己的 Bot。他们会得到说明和定时任务。聊天、记忆和已保存的登录仍留在你这里。"
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "能看到这个模板的人可以阅读它的名称、简介和说明。不要写入密码、密钥或客户资料。"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -6465,6 +6469,10 @@ msgstr "这些已保存的设置读不出来。请移除后再添加一次。"
 msgid "They get {weeks} weeks free."
 msgstr "对方可免费使用 {weeks} 周。"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "对方得到自己的一份。定时任务开始时是暂停的。聊天、记忆和已保存的登录留在你这边。"
+
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6629,6 +6637,10 @@ msgstr "此订阅登录在 Rakazo 中尚不可用。请使用部署凭据或选�
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "本周"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "本工作区"
 
 #: src/lib/cron.ts
 msgid "Thursday"
@@ -7148,6 +7160,10 @@ msgstr "Bot 应在哪里运行？"
 #: src/components/pages/SharePopover.tsx
 msgid "Who can open this page"
 msgstr "谁可以打开此页面"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "谁可以使用"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

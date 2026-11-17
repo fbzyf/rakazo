@@ -3098,6 +3098,10 @@ msgstr "Her ay"
 msgid "Every week"
 msgstr "Her hafta"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Giriş yapabilen herkes"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
 msgstr "Executor belirteci"
@@ -4908,8 +4912,8 @@ msgid "Pending"
 msgstr "Beklemede"
 
 #: src/pages/shell/bot-templates-dialog.tsx
-msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
-msgstr "Bu alandaki kişiler bundan kendi botlarını oluşturabilir. Yönergeleri ve zamanlamaları alırlar. Sohbetler, bellek ve kayıtlı oturumlar sizde kalır."
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Bu şablonu görmesine izin verilen kişiler adını, açıklamasını ve yönergelerini okuyabilir. Parola, sır veya müşteri verisi eklemeyin."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -6465,6 +6469,10 @@ msgstr "Bu kayıtlı ayarlar okunamıyor. Kaldırıp yeniden ekle."
 msgid "They get {weeks} weeks free."
 msgstr "Arkadaşın {weeks} hafta ücretsiz kullanır."
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "Karşı taraf kendi kopyasını alır. Zamanlamalar duraklatılmış başlar. Sohbetler, bellek ve kayıtlı oturumlar sizde kalır."
+
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6629,6 +6637,10 @@ msgstr "Bu abonelik girişi Rakazo'da henüz kullanılamıyor. Bir dağıtım ki
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "Bu hafta"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Bu çalışma alanı"
 
 #: src/lib/cron.ts
 msgid "Thursday"
@@ -7148,6 +7160,10 @@ msgstr "Botlar nerede çalışsın?"
 #: src/components/pages/SharePopover.tsx
 msgid "Who can open this page"
 msgstr "Bu sayfayı kimler açabilir"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Kim kullanabilir"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

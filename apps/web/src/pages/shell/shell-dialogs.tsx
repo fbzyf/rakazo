@@ -371,8 +371,8 @@ export function ShellDialogs({
       {shareTemplateBot ? (
         <ShareTemplateDialog
           onCancel={() => setShareTemplateBot(null)}
-          onConfirm={async () => {
-            await rpc.botTemplates.publish({ botId: shareTemplateBot.id });
+          onConfirm={async (audience) => {
+            await rpc.botTemplates.publish({ botId: shareTemplateBot.id, audience });
             setShareTemplateBot(null);
           }}
         />

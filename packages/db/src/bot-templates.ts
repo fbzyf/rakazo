@@ -1,4 +1,10 @@
-import type { Actor, Bot, BotTemplate, BotTemplateRoutine } from "@rakazo/contracts";
+import type {
+  Actor,
+  Bot,
+  BotTemplate,
+  BotTemplateAudience,
+  BotTemplateRoutine,
+} from "@rakazo/contracts";
 import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_INSTRUCTIONS_MAX_LENGTH,
@@ -112,6 +118,7 @@ function toTemplate(
     color: string;
     avatarSet: string;
     routines: unknown;
+    audience: string;
     createdByUserId: string | null;
     updatedAt: Date;
   },
@@ -125,14 +132,22 @@ function toTemplate(
     color: row.color,
     avatarSet: resolveBotAvatarSet(row.avatarSet),
     routines: storedRoutines(row.routines),
+    audience: row.audience === "signed_in" ? "signed_in" : "space",
     mine: row.createdByUserId === actor.userId,
     updatedAt: row.updatedAt.toISOString(),
   };
 }
 
+/** Templates in this workspace, plus ones shared with everyone who can log in. */
+function visibleTemplates(actor: Actor) {
+  return {
+    OR: [{ spaceId: actor.spaceId }, { audience: "signed_in" satisfies BotTemplateAudience }],
+  };
+}
+
 export async function listBotTemplates(prisma: PrismaClient, actor: Actor): Promise<BotTemplate[]> {
   const rows = await prisma.botTemplate.findMany({
-    where: { spaceId: actor.spaceId },
+    where: visibleTemplates(actor),
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
   });
   return rows.map((row) => toTemplate(row, actor));
@@ -143,6 +158,7 @@ export async function publishBotTemplate(
   prisma: PrismaClient,
   actor: Actor,
   botId: string,
+  audience: BotTemplateAudience = "space",
 ): Promise<BotTemplate> {
   const bot = await prisma.bot.findFirst({
     where: { id: botId, spaceId: actor.spaceId, userId: actor.userId, archivedAt: null },
@@ -165,6 +181,7 @@ export async function publishBotTemplate(
   const data = {
     ...content,
     routines: content.routines as Prisma.InputJsonValue,
+    audience,
   };
   const existing = await prisma.botTemplate.findFirst({
     where: { spaceId: actor.spaceId, sourceBotId: bot.id },
@@ -202,13 +219,17 @@ export async function removeBotTemplate(
   templateId: string,
 ): Promise<void> {
   const deleted = await prisma.botTemplate.deleteMany({
-    where: { id: templateId, spaceId: actor.spaceId, createdByUserId: actor.userId },
+    where: {
+      id: templateId,
+      createdByUserId: actor.userId,
+      OR: [{ spaceId: actor.spaceId }, { audience: "signed_in" }],
+    },
   });
   if (deleted.count !== 1) throw new IsolationError();
 }
 
 /**
- * Make the actor's own bot from a template in their space. The copy gets paused schedules
+ * Make the actor's own bot from a template they are allowed to see. The copy gets paused schedules
  * and none of the publisher's chats, memory, files, connections, or credentials.
  */
 export async function useBotTemplate(
@@ -217,7 +238,7 @@ export async function useBotTemplate(
   templateId: string,
 ): Promise<Bot> {
   const row = await prisma.botTemplate.findFirst({
-    where: { id: templateId, spaceId: actor.spaceId },
+    where: { id: templateId, ...visibleTemplates(actor) },
   });
   if (!row) throw new IsolationError();
   const routines = storedRoutines(row.routines);

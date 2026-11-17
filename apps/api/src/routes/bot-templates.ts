@@ -17,7 +17,7 @@ export function botTemplateRoutes(ctx: RouterContext) {
         listBotTemplates(deps.prisma, context.actor),
       ),
       publish: authed.botTemplates.publish.handler(async ({ context, input }) =>
-        publishBotTemplate(deps.prisma, context.actor, input.botId),
+        publishBotTemplate(deps.prisma, context.actor, input.botId, input.audience),
       ),
       remove: authed.botTemplates.remove.handler(async ({ context, input }) => {
         await removeBotTemplate(deps.prisma, context.actor, input.templateId);

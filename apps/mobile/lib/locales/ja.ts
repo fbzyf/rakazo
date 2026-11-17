@@ -256,6 +256,12 @@ export const JA_MESSAGES: Record<string, string> = {
   "Remove template": "テンプレートを取り下げる",
   "Could not share template": "テンプレートを共有できませんでした",
   "Could not use template": "テンプレートを使えませんでした",
+  "This workspace": "このワークスペース",
+  "Everyone who can log in": "ログインできる人全員",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "このテンプレートを見られる人は、名前、説明、指示を読めます。パスワード、秘密情報、顧客データを入れないでください。",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "相手は自分用のコピーを受け取ります。スケジュールは一時停止のまま始まります。チャット、メモリ、保存したログインはあなたのもとに残ります。",
   "New group chat": "新しいグループチャット",
   "New private space": "新しいプライベートスペース",
   Routine: "ルーティン",

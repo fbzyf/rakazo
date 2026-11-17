@@ -172,6 +172,7 @@ describePostgres("bot templates (PostgreSQL)", () => {
     const published = await runAsTenant({ spaceId, userId: userA }, () =>
       publishBotTemplate(prisma, actor(userA, spaceId), source.id),
     );
+    expect(published.audience).toBe("space");
     expect(published.mine).toBe(true);
     expect(published.instructions).toBe("Summarize overnight mail.");
     expect(published.routines).toEqual([
@@ -259,6 +260,92 @@ describePostgres("bot templates (PostgreSQL)", () => {
         listBotTemplates(prisma, actor(userB, spaceId)),
       ),
     ).toEqual([]);
+    expect(await system.bot.findUnique({ where: { id: copy.id } })).not.toBeNull();
+  });
+
+  it("lets someone in another workspace copy a template shared with everyone who can log in", async () => {
+    const source = await runAsTenant({ spaceId, userId: userA }, () =>
+      createRepos(prisma).createBot(actor(userA, spaceId), {
+        name: "Open brief",
+        description: "",
+        instructions: "Visible to people who can log in.",
+        notifyOnFinish: true,
+      }),
+    );
+    const hidden = await runAsTenant({ spaceId, userId: userA }, () =>
+      publishBotTemplate(prisma, actor(userA, spaceId), source.id),
+    );
+    expect(hidden.audience).toBe("space");
+    const before = await runAsTenant({ spaceId: otherSpaceId, userId: userC }, () =>
+      listBotTemplates(prisma, actor(userC, otherSpaceId)),
+    );
+    expect(before.find((template) => template.id === hidden.id)).toBeUndefined();
+
+    const opened = await runAsTenant({ spaceId, userId: userA }, () =>
+      publishBotTemplate(prisma, actor(userA, spaceId), source.id, "signed_in"),
+    );
+    expect(opened.id).toBe(hidden.id);
+    expect(opened.audience).toBe("signed_in");
+    const seen = await runAsTenant({ spaceId: otherSpaceId, userId: userC }, () =>
+      listBotTemplates(prisma, actor(userC, otherSpaceId)),
+    );
+    expect(seen.map((template) => template.id)).toContain(opened.id);
+
+    const copy = await runAsTenant({ spaceId: otherSpaceId, userId: userC }, () =>
+      useBotTemplate(prisma, actor(userC, otherSpaceId), opened.id),
+    );
+    const stored = await system.bot.findUniqueOrThrow({ where: { id: copy.id } });
+    expect(stored.userId).toBe(userC);
+    expect(stored.spaceId).toBe(otherSpaceId);
+    expect(stored.instructions).toBe("Visible to people who can log in.");
+    expect(
+      await system.memoryDocument.count({ where: { botId: copy.id, path: { not: "MEMORY.md" } } }),
+    ).toBe(0);
+
+    const visibleTo = async (space: string, userId: string) =>
+      system.$transaction(async (tx) => {
+        await tx.$executeRaw`
+          SELECT set_config('app.space_id', ${space}, true),
+                 set_config('app.user_id', ${userId}, true),
+                 set_config('app.rls_bypass', 'off', true),
+                 set_config('app.rls_bypass_key', '', true)`;
+        await tx.$executeRawUnsafe("SET LOCAL ROLE rakazo_app");
+        const rows = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM bot_templates WHERE id = ${opened.id}`;
+        return rows.map((row) => row.id);
+      });
+    expect(await visibleTo(otherSpaceId, userC)).toEqual([opened.id]);
+    expect(await visibleTo("", "")).toEqual([]);
+    const changed = await system.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT set_config('app.space_id', ${otherSpaceId}, true),
+               set_config('app.user_id', ${userC}, true),
+               set_config('app.rls_bypass', 'off', true),
+               set_config('app.rls_bypass_key', '', true)`;
+      await tx.$executeRawUnsafe("SET LOCAL ROLE rakazo_app");
+      return tx.$executeRaw`
+        UPDATE bot_templates SET instructions = 'Changed by someone else.' WHERE id = ${opened.id}`;
+    });
+    expect(changed).toBe(0);
+    expect(
+      (await system.botTemplate.findUniqueOrThrow({ where: { id: opened.id } })).instructions,
+    ).toBe("Visible to people who can log in.");
+
+    await expect(
+      runAsTenant({ spaceId: otherSpaceId, userId: userC }, () =>
+        removeBotTemplate(prisma, actor(userC, otherSpaceId), opened.id),
+      ),
+    ).rejects.toBeInstanceOf(IsolationError);
+
+    const narrowed = await runAsTenant({ spaceId, userId: userA }, () =>
+      publishBotTemplate(prisma, actor(userA, spaceId), source.id, "space"),
+    );
+    expect(narrowed.audience).toBe("space");
+    const after = await runAsTenant({ spaceId: otherSpaceId, userId: userC }, () =>
+      listBotTemplates(prisma, actor(userC, otherSpaceId)),
+    );
+    expect(after.find((template) => template.id === opened.id)).toBeUndefined();
+    expect(await visibleTo(otherSpaceId, userC)).toEqual([]);
     expect(await system.bot.findUnique({ where: { id: copy.id } })).not.toBeNull();
   });
 });

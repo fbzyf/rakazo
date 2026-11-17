@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { BotTemplate } from "@rakazo/contracts";
+import type { BotTemplate, BotTemplateAudience } from "@rakazo/contracts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +15,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  RadioGroup,
+  RadioGroupItem,
 } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import type { createSpaceRpc } from "../../lib/rpc";
@@ -32,7 +34,7 @@ export function templateExcerpt(instructions: string): string {
   return `${safe.trimEnd()}…`;
 }
 
-/** Cards for templates people in this space have published. Choosing one copies it. */
+/** Cards for templates the signed-in person can copy. Choosing one copies it. */
 export function BotTemplatesDialog({
   rpc,
   onCancel,
@@ -147,6 +149,11 @@ export function BotTemplatesDialog({
                       ) : null}
                     </span>
                   </span>
+                  {template.audience === "signed_in" ? (
+                    <span className="block text-[12px] text-muted-foreground">
+                      <Trans>Everyone who can log in</Trans>
+                    </span>
+                  ) : null}
                   {templateExcerpt(template.instructions) ? (
                     <span className="block rounded-lg bg-background p-3 text-[13px] leading-5 text-foreground">
                       {templateExcerpt(template.instructions)}
@@ -173,17 +180,19 @@ export function BotTemplatesDialog({
   );
 }
 
-/** Tells the publisher exactly what colleagues receive before the template is saved. */
+/** Asks who can see the template, and warns what they can read, before it is saved. */
 export function ShareTemplateDialog({
   onCancel,
   onConfirm,
 }: {
   onCancel: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: (audience: BotTemplateAudience) => Promise<void>;
 }) {
   const { t } = useLingui();
+  const [audience, setAudience] = useState<BotTemplateAudience>("space");
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const audienceLabelId = "share-template-audience";
 
   return (
     <AlertDialog
@@ -199,11 +208,44 @@ export function ShareTemplateDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             <Trans>
-              People in this space can make their own bot from this. They get the instructions and
-              schedules. Chats, memory, and saved sign-ins stay with you.
+              People allowed to see this template can read its name, description, and instructions.
+              Do not include passwords, secrets, or customer data.
             </Trans>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <RadioGroup
+          aria-labelledby={audienceLabelId}
+          value={audience}
+          onValueChange={(value) => setAudience(value === "signed_in" ? "signed_in" : "space")}
+        >
+          <p id={audienceLabelId} className="text-[13px] text-foreground">
+            <Trans>Who can use it</Trans>
+          </p>
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: the wrapped RadioGroupItem is the control. */}
+          <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+            <RadioGroupItem value="space" className="mt-0.5" data-testid="share-audience-space" />
+            <span className="text-[14px] text-foreground">
+              <Trans>This workspace</Trans>
+            </span>
+          </label>
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: the wrapped RadioGroupItem is the control. */}
+          <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+            <RadioGroupItem
+              value="signed_in"
+              className="mt-0.5"
+              data-testid="share-audience-signed-in"
+            />
+            <span className="text-[14px] text-foreground">
+              <Trans>Everyone who can log in</Trans>
+            </span>
+          </label>
+        </RadioGroup>
+        <p className="text-[13px] text-muted-foreground">
+          <Trans>
+            They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay
+            with you.
+          </Trans>
+        </p>
         {error ? (
           <p role="alert" className="text-[13px] text-destructive">
             {error}
@@ -218,7 +260,7 @@ export function ShareTemplateDialog({
             onClick={() => {
               setSharing(true);
               setError(null);
-              void onConfirm().catch((err: unknown) => {
+              void onConfirm(audience).catch((err: unknown) => {
                 setError(errorText(err, t`Could not share template`));
                 setSharing(false);
               });

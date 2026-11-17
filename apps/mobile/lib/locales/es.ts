@@ -260,6 +260,12 @@ export const ES_MESSAGES: Record<string, string> = {
   "Remove template": "Quitar plantilla",
   "Could not share template": "No se pudo compartir la plantilla",
   "Could not use template": "No se pudo usar la plantilla",
+  "This workspace": "Este espacio de trabajo",
+  "Everyone who can log in": "Quien pueda iniciar sesión",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Quien pueda ver esta plantilla puede leer su nombre, descripción e instrucciones. No incluyas contraseñas, secretos ni datos de clientes.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "La otra persona recibe su propia copia. Los horarios empiezan en pausa. Los chats, la memoria y los inicios de sesión guardados se quedan contigo.",
   "New group chat": "Nuevo chat grupal",
   "New private space": "Nuevo espacio privado",
   Routine: "Rutina",

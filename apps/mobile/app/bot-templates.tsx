@@ -122,6 +122,11 @@ export default function BotTemplates() {
                   {template.description}
                 </Text>
               ) : null}
+              {template.audience === "signed_in" ? (
+                <Text style={{ color: tokens.mutedForeground, fontSize: 13, marginTop: 4 }}>
+                  {t("Everyone who can log in")}
+                </Text>
+              ) : null}
               {excerpt(template.instructions) ? (
                 <Text style={{ color: tokens.foreground, fontSize: 14, marginTop: 10 }}>
                   {excerpt(template.instructions)}

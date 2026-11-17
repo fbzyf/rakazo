@@ -20,7 +20,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 const warning =
-  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.";
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.";
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -52,6 +52,7 @@ function template(overrides: Partial<BotTemplate> = {}): BotTemplate {
     mine: false,
     updatedAt: "2026-11-17T00:00:00.000Z",
     ...overrides,
+    audience: overrides.audience ?? "space",
   };
 }
 
@@ -103,14 +104,43 @@ describe("BotTemplatesDialog", () => {
 });
 
 describe("ShareTemplateDialog", () => {
-  it("shows what colleagues receive before sharing", async () => {
+  it("warns before sharing and keeps this workspace selected", async () => {
+    const onConfirm = vi.fn(async () => undefined);
     await act(async () => {
-      root.render(
-        <ShareTemplateDialog onCancel={() => undefined} onConfirm={async () => undefined} />,
-      );
+      root.render(<ShareTemplateDialog onCancel={() => undefined} onConfirm={onConfirm} />);
     });
     expect(document.querySelector('[data-testid="share-template-dialog"]')).toBeTruthy();
-    expect(document.body.textContent).toContain("Share as template");
     expect(document.body.textContent?.replace(/\s+/g, " ")).toContain(warning);
+    expect(document.body.textContent).toContain("This workspace");
+    expect(
+      document.querySelector('[data-testid="share-audience-space"]')?.hasAttribute("data-checked"),
+    ).toBe(true);
+    const share = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Share",
+    );
+    expect(share).toBeTruthy();
+    await act(async () => {
+      share?.click();
+    });
+    expect(onConfirm).toHaveBeenCalledWith("space");
+  });
+
+  it("shares with everyone who can log in only after that choice", async () => {
+    const onConfirm = vi.fn(async () => undefined);
+    await act(async () => {
+      root.render(<ShareTemplateDialog onCancel={() => undefined} onConfirm={onConfirm} />);
+    });
+    const everyone = document.querySelector('[data-testid="share-audience-signed-in"]');
+    expect(everyone).toBeTruthy();
+    await act(async () => {
+      (everyone as HTMLElement).click();
+    });
+    const share = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Share",
+    );
+    await act(async () => {
+      share?.click();
+    });
+    expect(onConfirm).toHaveBeenCalledWith("signed_in");
   });
 });

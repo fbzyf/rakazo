@@ -605,6 +605,12 @@ export const ZH_TW_MESSAGES: Record<string, string> = {
   "Remove template": "撤下模板",
   "Could not share template": "無法發布模板",
   "Could not use template": "無法使用模板",
+  "This workspace": "本工作區",
+  "Everyone who can log in": "所有已登入的人",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "看得到這個模板的人可以閱讀它的名稱、簡介和說明。不要寫入密碼、密鑰或客戶資料。",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "對方得到自己的一份。排程開始時是暫停的。聊天、記憶和已儲存的登入留在你這邊。",
   "New group": "新增群組",
   "New section": "新增分組",
   "Rename section": "重新命名分組",

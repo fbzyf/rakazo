@@ -650,6 +650,12 @@ export const RU_MESSAGES: Record<string, string> = {
   "Remove template": "Снять шаблон",
   "Could not share template": "Не удалось поделиться шаблоном",
   "Could not use template": "Не удалось использовать шаблон",
+  "This workspace": "Это рабочее пространство",
+  "Everyone who can log in": "Все, кто может войти",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Кто может видеть этот шаблон, прочитает его название, описание и инструкции. Не добавляйте пароли, секреты и данные клиентов.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "Другой человек получает свою копию. Расписания начинают работу на паузе. Чаты, память и сохранённые входы остаются у вас.",
   "New group chat": "Новый групповой чат",
   "New section": "Новый раздел",
   "Rename section": "Переименовать раздел",

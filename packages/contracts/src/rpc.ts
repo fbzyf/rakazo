@@ -68,6 +68,7 @@ import {
   BotSchema,
   BotSectionName,
   BotSectionSchema,
+  BotTemplateAudienceSchema,
   BotTemplateSchema,
   ByokIntervalSchema,
   ByokTierSchema,
@@ -576,7 +577,9 @@ export const appContract = {
   },
   botTemplates: {
     list: oc.output(z.array(BotTemplateSchema)),
-    publish: oc.input(botId).output(BotTemplateSchema),
+    publish: oc
+      .input(botId.safeExtend({ audience: BotTemplateAudienceSchema.default("space") }))
+      .output(BotTemplateSchema),
     remove: oc.input(z.object({ templateId: Id })).output(z.object({ ok: z.literal(true) })),
     use: oc.input(z.object({ templateId: Id })).output(BotSchema),
   },

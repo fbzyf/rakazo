@@ -3098,6 +3098,10 @@ msgstr "Cada mes"
 msgid "Every week"
 msgstr "Cada semana"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Quien pueda iniciar sesión"
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
 msgstr "Token de Executor"
@@ -4908,8 +4912,8 @@ msgid "Pending"
 msgstr "Pendiente"
 
 #: src/pages/shell/bot-templates-dialog.tsx
-msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
-msgstr "Las personas de este espacio pueden crear su propio bot a partir de este. Reciben las instrucciones y los horarios. Los chats, la memoria y los inicios de sesión guardados se quedan contigo."
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Quien pueda ver esta plantilla puede leer su nombre, descripción e instrucciones. No incluyas contraseñas, secretos ni datos de clientes."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -6465,6 +6469,10 @@ msgstr "No se puede leer esta configuración guardada. Quítala y vuelve a agreg
 msgid "They get {weeks} weeks free."
 msgstr "Recibe {weeks} semanas gratis."
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "La otra persona recibe su propia copia. Los horarios empiezan en pausa. Los chats, la memoria y los inicios de sesión guardados se quedan contigo."
+
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6629,6 +6637,10 @@ msgstr "Este inicio de sesión por suscripción aún no está disponible en Raka
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "Esta semana"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Este espacio de trabajo"
 
 #: src/lib/cron.ts
 msgid "Thursday"
@@ -7148,6 +7160,10 @@ msgstr "¿Dónde deben ejecutarse los bots?"
 #: src/components/pages/SharePopover.tsx
 msgid "Who can open this page"
 msgstr "Quién puede abrir esta página"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Quién puede usarla"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

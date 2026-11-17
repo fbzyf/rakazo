@@ -266,6 +266,12 @@ export const PL_MESSAGES: Record<string, string> = {
   "Remove template": "Usuń szablon",
   "Could not share template": "Nie udało się udostępnić szablonu",
   "Could not use template": "Nie udało się użyć szablonu",
+  "This workspace": "Ten obszar roboczy",
+  "Everyone who can log in": "Każdy, kto może się zalogować",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Osoby, które mogą zobaczyć ten szablon, przeczytają jego nazwę, opis i instrukcje. Nie umieszczaj haseł, sekretów ani danych klientów.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "Druga osoba dostaje własną kopię. Harmonogramy startują wstrzymane. Czaty, pamięć i zapisane logowania zostają u ciebie.",
   "New group chat": "Nowy czat grupowy",
   "New private space": "Nowa prywatna przestrzeń",
   Routine: "Rutyna",

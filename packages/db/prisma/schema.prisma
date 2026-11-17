@@ -815,7 +815,8 @@ model Bot {
   messagingInstallSessions MessagingInstallSession[]
 }
 
-/// A bot's instructions and schedules, published for other members of the same space to copy.
+/// A bot's instructions and schedules, published for colleagues to copy.
+/// `audience` is `space` (this workspace only) or `signed_in` (anyone who can log in).
 /// Chats, memory, files, and credentials stay on the source bot.
 model BotTemplate {
   id              String   @id @default(cuid())
@@ -834,6 +835,8 @@ model BotTemplate {
   avatarSet       String   @default("organic")
   /// Recurring schedules only: name, prompt, crons, timezone. Created paused on a copy.
   routines        Json     @default("[]")
+  /// `space` or `signed_in`. Existing rows stay `space`.
+  audience        String   @default("space")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
