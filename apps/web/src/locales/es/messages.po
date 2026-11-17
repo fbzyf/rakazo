@@ -4944,10 +4944,6 @@ msgstr "Fijados"
 msgid "Plan"
 msgstr "Plan"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Reproducir {name}"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Reproduciendo…"

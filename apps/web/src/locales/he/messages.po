@@ -4944,10 +4944,6 @@ msgstr "מוצמדים"
 msgid "Plan"
 msgstr "תוכנית"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "הפעלת {name}"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "מתנגן…"

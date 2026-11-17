@@ -4944,10 +4944,6 @@ msgstr "Épinglés"
 msgid "Plan"
 msgstr "Forfait"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Lire {name}"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Lecture en cours…"

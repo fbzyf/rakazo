@@ -2,7 +2,7 @@ import type { ArtifactStore } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import { Id } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { IsolationError } from "@rakazo/db";
+import { IsolationError, runAsTenant } from "@rakazo/db";
 import type { Hono } from "hono";
 import { loadSpaceArtifactBytes } from "./artifacts.js";
 
@@ -42,7 +42,11 @@ export function mountArtifactDownloadRoute(
     );
     if (!actor) return c.text("Unauthorized", 401, headers);
     try {
-      const artifact = await loadSpaceArtifactBytes(deps, actor, parsed.data);
+      // This route is outside the RPC `asTenant` wrapper. Without a tenant here,
+      // Postgres RLS hides the row and the preview dialog shows "Not Found".
+      const artifact = await runAsTenant(actor, () =>
+        loadSpaceArtifactBytes(deps, actor, parsed.data),
+      );
       const download = c.req.query("download") === "1";
       const mimeType = headerSafe(artifact.mimeType) || "application/octet-stream";
       return new Response(Buffer.from(artifact.bytes), {

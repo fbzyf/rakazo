@@ -4944,10 +4944,6 @@ msgstr "Vastgezet"
 msgid "Plan"
 msgstr "Abonnement"
 
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} afspelen"
-
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
 msgstr "Bezig met afspelen…"
