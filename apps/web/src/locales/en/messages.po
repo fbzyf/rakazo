@@ -1131,6 +1131,12 @@ msgstr "Bot screen preview"
 msgid "Bot style"
 msgstr "Bot style"
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "Bot templates"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "Bot's model"
@@ -1225,6 +1231,7 @@ msgstr "Can't read images"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "Could not send reset email"
 msgid "Could not send that"
 msgstr "Could not send that"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Could not share template"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "Could not show the credential"
@@ -2409,6 +2420,10 @@ msgstr "Could not update reaction"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Could not update the default memory scope"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Could not use template"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4487,6 +4502,10 @@ msgstr "No skills yet"
 msgid "No submissions"
 msgstr "No submissions"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "No templates yet"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "No tickets yet"
@@ -4888,6 +4907,10 @@ msgstr "Paused"
 msgid "Pending"
 msgstr "Pending"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "Permissions"
@@ -4943,10 +4966,6 @@ msgstr "Pinned"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "Plan"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Play {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5309,6 +5328,10 @@ msgstr "Remove skill {0}"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr "Remove skills"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Remove template"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5873,12 +5896,18 @@ msgstr "Shape {0}"
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "Share"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "Share “{title}”"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Share as template"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

@@ -1131,6 +1131,12 @@ msgstr "बॉट स्क्रीन प्रीव्यू"
 msgid "Bot style"
 msgstr ""
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "बॉट टेम्पलेट"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "बॉट का मॉडल"
@@ -1225,6 +1231,7 @@ msgstr "तस्वीरें नहीं पढ़ सकता"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "रीसेट ईमेल नहीं भेजा जा सका"
 msgid "Could not send that"
 msgstr "वह भेजा नहीं जा सका"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "टेम्पलेट साझा नहीं हो सका"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "क्रेडेंशियल नहीं दिखाया जा सका"
@@ -2409,6 +2420,10 @@ msgstr ""
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "डिफ़ॉल्ट मेमोरी स्कोप अपडेट नहीं हो सका"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "टेम्पलेट उपयोग नहीं हो सका"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4487,6 +4502,10 @@ msgstr "अभी तक कोई स्किल नहीं"
 msgid "No submissions"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "अभी कोई टेम्पलेट नहीं"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr ""
@@ -4888,6 +4907,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "इस स्पेस के लोग इससे अपना बॉट बना सकते हैं। उन्हें निर्देश और समय-सारिणी मिलती है। चैट, मेमोरी और सहेजे साइन-इन आपके पास रहते हैं।"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "अनुमतियाँ"
@@ -4943,10 +4966,6 @@ msgstr "पिन किए गए"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "प्लान"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} चलाएँ"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5309,6 +5328,10 @@ msgstr "स्किल {0} हटाएं"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "टेम्पलेट हटाएँ"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5873,12 +5896,18 @@ msgstr ""
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "शेयर करें"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "“{title}” शेयर करें"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "टेम्पलेट के रूप में साझा करें"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

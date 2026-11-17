@@ -1131,6 +1131,12 @@ msgstr "Bot ekranı önizlemesi"
 msgid "Bot style"
 msgstr "Bot stili"
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "Bot şablonları"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "Botun modeli"
@@ -1225,6 +1231,7 @@ msgstr "Görselleri okuyamaz"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "Sıfırlama e-postası gönderilemedi"
 msgid "Could not send that"
 msgstr "Gönderilemedi"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Şablon paylaşılamadı"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "Kimlik bilgisi gösterilemedi"
@@ -2409,6 +2420,10 @@ msgstr "Tepki güncellenemedi"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Varsayılan hafıza kapsamı güncellenemedi"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Şablon kullanılamadı"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4487,6 +4502,10 @@ msgstr "Henüz beceri yok"
 msgid "No submissions"
 msgstr "Gönderim yok"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Henüz şablon yok"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "Henüz talep yok"
@@ -4888,6 +4907,10 @@ msgstr "Duraklatıldı"
 msgid "Pending"
 msgstr "Beklemede"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "Bu alandaki kişiler bundan kendi botlarını oluşturabilir. Yönergeleri ve zamanlamaları alırlar. Sohbetler, bellek ve kayıtlı oturumlar sizde kalır."
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "İzinler"
@@ -4943,10 +4966,6 @@ msgstr "Sabitlenenler"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "Plan"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} dosyasını oynat"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5309,6 +5328,10 @@ msgstr "{0} becerisini kaldır"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr "Becerileri kaldır"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Şablonu kaldır"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5873,12 +5896,18 @@ msgstr "Şekil {0}"
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "Paylaş"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "“{title}” paylaş"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Şablon olarak paylaş"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

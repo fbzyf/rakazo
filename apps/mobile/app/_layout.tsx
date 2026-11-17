@@ -470,6 +470,14 @@ function LayoutContent() {
                       }}
                     />
                     <Stack.Screen
+                      name="bot-templates"
+                      options={{
+                        title: t("Bot templates"),
+                        presentation: "modal",
+                        gestureEnabled: true,
+                      }}
+                    />
+                    <Stack.Screen
                       name="new-organization"
                       options={{
                         headerShown: false,

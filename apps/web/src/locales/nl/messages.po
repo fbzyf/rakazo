@@ -1131,6 +1131,12 @@ msgstr "Voorbeeld van het bot-scherm"
 msgid "Bot style"
 msgstr ""
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "Botsjablonen"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "Model van de bot"
@@ -1225,6 +1231,7 @@ msgstr "Kan afbeeldingen niet lezen"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "Herstellingsmail versturen mislukt"
 msgid "Could not send that"
 msgstr "Versturen mislukt"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Sjabloon delen mislukt"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "Kan de gegevens niet tonen"
@@ -2409,6 +2420,10 @@ msgstr "Reactie bijwerken mislukt"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Het standaardgeheugenbereik bijwerken mislukt"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Sjabloon gebruiken mislukt"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4487,6 +4502,10 @@ msgstr "Nog geen skills"
 msgid "No submissions"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Nog geen sjablonen"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "Nog geen tickets"
@@ -4888,6 +4907,10 @@ msgstr "Gepauzeerd"
 msgid "Pending"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "Mensen in deze space kunnen hiervan hun eigen bot maken. Zij krijgen de instructies en schema's. Chats, geheugen en opgeslagen aanmeldingen blijven bij jou."
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "Machtigingen"
@@ -4943,10 +4966,6 @@ msgstr "Vastgezet"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "Abonnement"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "{name} afspelen"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5309,6 +5328,10 @@ msgstr "Skill {0} verwijderen"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Sjabloon verwijderen"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5873,12 +5896,18 @@ msgstr ""
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "Delen"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "‘{title}’ delen"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Delen als sjabloon"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

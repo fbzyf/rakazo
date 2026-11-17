@@ -702,6 +702,7 @@ function Home({ embedded, onSelectSpace, onShareSelect }: InboxPaneProps & { emb
     (action: CreateAction) => {
       if (spaceActionRef.current.busy || spaceActionRef.current.recoveryId) return;
       if (action === "bot") void createQuickBot();
+      else if (action === "templates") router.push("/bot-templates");
       else if (action === "group") router.push("/new-group");
       else router.push("/new-space");
     },

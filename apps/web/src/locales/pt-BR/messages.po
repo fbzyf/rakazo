@@ -1131,6 +1131,12 @@ msgstr "Pré-visualização da tela"
 msgid "Bot style"
 msgstr ""
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "Modelos de bots"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "Modelo do bot"
@@ -1225,6 +1231,7 @@ msgstr "Não pode ler imagens"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "Não foi possível enviar o e-mail de redefinição"
 msgid "Could not send that"
 msgstr "Não foi possível enviar"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Não foi possível compartilhar o modelo"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "Não foi possível mostrar a credencial"
@@ -2409,6 +2420,10 @@ msgstr ""
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "Não foi possível atualizar o escopo de memória padrão"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Não foi possível usar o modelo"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4487,6 +4502,10 @@ msgstr "Ainda não há habilidades"
 msgid "No submissions"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Ainda não há modelos"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr ""
@@ -4888,6 +4907,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "As pessoas deste espaço podem criar o próprio bot a partir deste. Elas recebem as instruções e os horários. Conversas, memória e acessos salvos ficam com você."
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "Permissões"
@@ -4943,10 +4966,6 @@ msgstr "Fixados"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "Plano"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "Reproduzir {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5309,6 +5328,10 @@ msgstr "Remover habilidade {0}"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Remover modelo"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5873,12 +5896,18 @@ msgstr ""
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "Compartilhar"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "Compartilhar “{title}”"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Compartilhar como modelo"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

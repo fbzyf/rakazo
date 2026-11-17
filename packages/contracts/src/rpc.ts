@@ -68,6 +68,7 @@ import {
   BotSchema,
   BotSectionName,
   BotSectionSchema,
+  BotTemplateSchema,
   ByokIntervalSchema,
   ByokTierSchema,
   CapabilityInstallSchema,
@@ -572,6 +573,12 @@ export const appContract = {
         webhookConfigured: z.literal(true),
       }),
     ),
+  },
+  botTemplates: {
+    list: oc.output(z.array(BotTemplateSchema)),
+    publish: oc.input(botId).output(BotTemplateSchema),
+    remove: oc.input(z.object({ templateId: Id })).output(z.object({ ok: z.literal(true) })),
+    use: oc.input(z.object({ templateId: Id })).output(BotSchema),
   },
   groups: {
     create: oc.input(CreateGroupInput).output(GroupSchema),

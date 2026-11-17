@@ -1132,6 +1132,12 @@ msgstr "機器人螢幕預覽"
 msgid "Bot style"
 msgstr ""
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "Bot 模板"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "機器人的模型"
@@ -1226,6 +1232,7 @@ msgstr "無法讀取影像"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2342,6 +2349,10 @@ msgstr "無法傳送重設郵件"
 msgid "Could not send that"
 msgstr "無法傳送"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "無法發布模板"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "無法顯示憑證"
@@ -2410,6 +2421,10 @@ msgstr "無法更新反應"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "無法更新預設記憶範圍"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "無法使用模板"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -4488,6 +4503,10 @@ msgstr "尚無技能"
 msgid "No submissions"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "還沒有模板"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "尚無工作項目"
@@ -4889,6 +4908,10 @@ msgstr "已暫停"
 msgid "Pending"
 msgstr "待處理"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you."
+msgstr "這個工作區裡的人可以據此建立自己的 Bot。他們會得到說明和排程。聊天、記憶和已儲存的登入仍留在你這裡。"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
 msgstr "權限"
@@ -4944,10 +4967,6 @@ msgstr "置頂"
 #: src/components/ModelCredits.tsx
 msgid "Plan"
 msgstr "方案"
-
-#: src/components/ArtifactFileCard.tsx
-msgid "Play {name}"
-msgstr "播放 {name}"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Playing…"
@@ -5310,6 +5329,10 @@ msgstr "移除技能 {0}"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "撤下模板"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5874,12 +5897,18 @@ msgstr "形狀 {0}"
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "分享"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "分享「{title}」"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "發布為模板"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"

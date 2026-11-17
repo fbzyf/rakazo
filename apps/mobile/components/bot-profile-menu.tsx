@@ -2,6 +2,7 @@ import { MenuView } from "@expo/ui/community/menu";
 import type { NativeStackNavigationOptions } from "expo-router";
 import { useRouter } from "expo-router";
 import { Alert, View } from "react-native";
+import { rpc } from "../lib/api";
 import { notifyArchivedChatsChanged } from "../lib/archived-chats";
 import { archiveBot, confirmClearConversation, confirmDeleteBot } from "../lib/bot-lifecycle";
 import { useI18n } from "../lib/i18n";
@@ -25,7 +26,30 @@ export function useBotProfileActions(botId: string, name: string): BotProfileAct
     router.dismissAll();
     router.replace("/");
   }
+  function shareAsTemplate() {
+    Alert.alert(
+      t("Share as template"),
+      t(
+        "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.",
+      ),
+      [
+        { text: t("Cancel"), style: "cancel" },
+        {
+          text: t("Share"),
+          onPress: () =>
+            void rpc("botTemplates/publish", { botId }).catch((error) =>
+              Alert.alert(t("Could not share template"), errorText(error, t("Try again."))),
+            ),
+        },
+      ],
+    );
+  }
   return [
+    {
+      id: "share-template",
+      text: t("Share as template"),
+      onPress: shareAsTemplate,
+    },
     {
       id: "clear",
       text: t("Clear conversation"),

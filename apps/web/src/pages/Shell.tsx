@@ -24,7 +24,18 @@ import type { GroupAvatarMember } from "@rakazo/ui-web";
 import { Button } from "@rakazo/ui-web";
 import { useIsMobile } from "@rakazo/ui-web/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
-import { Keyboard, Lock, Monitor, Moon, Plug, Plus, ScrollText, Sun, Users } from "lucide-react";
+import {
+  Keyboard,
+  LayoutTemplate,
+  Lock,
+  Monitor,
+  Moon,
+  Plug,
+  Plus,
+  ScrollText,
+  Sun,
+  Users,
+} from "lucide-react";
 import {
   Suspense,
   useCallback,
@@ -863,6 +874,12 @@ function SpaceShell() {
       onSelect: () => dialogs.setCreateBotOpen(true),
     },
     {
+      id: "bot-templates",
+      label: t`Bot templates`,
+      icon: LayoutTemplate,
+      onSelect: () => dialogs.setBotTemplatesOpen(true),
+    },
+    {
       id: "new-group",
       label: t`New group chat`,
       icon: Users,
@@ -1016,6 +1033,7 @@ function SpaceShell() {
         navigate={navigate}
         setNewSpaceOpen={dialogs.setNewSpaceOpen}
         setCreateBotOpen={dialogs.setCreateBotOpen}
+        setBotTemplatesOpen={dialogs.setBotTemplatesOpen}
         roster={
           <SidebarRoster
             mini={miniSidebar}

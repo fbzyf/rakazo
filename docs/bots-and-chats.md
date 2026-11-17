@@ -11,6 +11,19 @@ the top of the sidebar), then **New bot**. Give it a name and choose **Create**.
 Then tell it its job in the chat, in plain words. It asks for anything else it needs, such as a
 sign-in or an app to connect.
 
+## Share a bot as a template
+
+People in the same space can copy a bot's setup. Another space cannot see it.
+
+Choose **Create**, then **Bot templates**, and pick a card. You get your own bot: the name,
+description, instructions, and look. Recurring schedules come along and start paused, so nothing
+runs until you turn one on. On a phone, **Bot templates** is in the same create menu.
+
+To publish one of your bots, right-click it and choose **Share as template**. On a phone, open the
+bot and choose **Share as template**. Colleagues get the instructions and schedules. Chats, memory,
+files, and saved sign-ins stay on your bot. Changing your bot later does not change copies people
+already made. Publish again to update the template, or remove it. Copies that were already made stay.
+
 > [!TIP]
 > One bot per job works best: an inbox bot, a research bot, a bot for one client. Each keeps its own
 > history and memory, so it gets better at that job over time.
