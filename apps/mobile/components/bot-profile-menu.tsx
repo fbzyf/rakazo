@@ -1,7 +1,9 @@
 import { MenuView } from "@expo/ui/community/menu";
+import type { BotTemplateAudience } from "@rakazo/contracts";
 import type { NativeStackNavigationOptions } from "expo-router";
 import { useRouter } from "expo-router";
 import { Alert, View } from "react-native";
+import { rpc } from "../lib/api";
 import { notifyArchivedChatsChanged } from "../lib/archived-chats";
 import { archiveBot, confirmClearConversation, confirmDeleteBot } from "../lib/bot-lifecycle";
 import { useI18n } from "../lib/i18n";
@@ -25,7 +27,28 @@ export function useBotProfileActions(botId: string, name: string): BotProfileAct
     router.dismissAll();
     router.replace("/");
   }
+  function shareAsTemplate(audience: BotTemplateAudience) {
+    void rpc("botTemplates/publish", { botId, audience }).catch((error) =>
+      Alert.alert(t("Could not share template"), errorText(error, t("Try again."))),
+    );
+  }
+  function chooseTemplateAudience() {
+    Alert.alert(
+      t("Share as template"),
+      `${t("People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.")}\n\n${t("They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.")}`,
+      [
+        { text: t("Cancel"), style: "cancel" },
+        { text: t("Everyone who can log in"), onPress: () => shareAsTemplate("signed_in") },
+        { text: t("This workspace"), onPress: () => shareAsTemplate("space") },
+      ],
+    );
+  }
   return [
+    {
+      id: "share-template",
+      text: t("Share as template"),
+      onPress: chooseTemplateAudience,
+    },
     {
       id: "clear",
       text: t("Clear conversation"),

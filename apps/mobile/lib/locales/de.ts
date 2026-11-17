@@ -266,6 +266,20 @@ export const DE_MESSAGES: Record<string, string> = {
   Integrations: "Integrationen",
   Models: "Modelle",
   "New bot": "Neuer Bot",
+  "Bot templates": "Bot-Vorlagen",
+  "Share as template": "Als Vorlage teilen",
+  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.":
+    "Personen in diesem Space können daraus einen eigenen Bot machen. Sie erhalten die Anweisungen und Zeitpläne. Chats, Erinnerungen und gespeicherte Anmeldungen bleiben bei dir.",
+  "No templates yet": "Noch keine Vorlagen",
+  "Remove template": "Vorlage entfernen",
+  "Could not share template": "Vorlage konnte nicht geteilt werden",
+  "Could not use template": "Vorlage konnte nicht verwendet werden",
+  "This workspace": "Dieser Arbeitsbereich",
+  "Everyone who can log in": "Alle, die sich anmelden können",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Wer diese Vorlage sehen darf, kann ihren Namen, die Beschreibung und die Anweisungen lesen. Keine Passwörter, Geheimnisse oder Kundendaten hineinschreiben.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "Die andere Person erhält eine eigene Kopie. Zeitpläne starten pausiert. Chats, Gedächtnis und gespeicherte Anmeldungen bleiben bei dir.",
   "New group chat": "Neuer Gruppenchat",
   "New private space": "Neuer privater Space",
   Routine: "Routine",

@@ -97,6 +97,14 @@ export function ChatContextMenu({
           navigate(bot ? `/app/${copy.id}` : `/app/g/${copy.id}`);
         });
       }}
+      onShareAsTemplate={
+        bot
+          ? () => {
+              dialogs.setShareTemplateBot(bot);
+              onClose();
+            }
+          : undefined
+      }
       onClear={() => {
         dialogs.setClearTarget(target);
         onClose();

@@ -411,6 +411,34 @@ export const BOT_NAME_MAX_LENGTH = 80;
 export const BOT_DESCRIPTION_MAX_LENGTH = 4000;
 export const BOT_INSTRUCTIONS_MAX_LENGTH = 20000;
 
+/** Who can see a published bot. `space` is one workspace. `signed_in` is anyone who can log in. */
+export const BotTemplateAudienceSchema = z.enum(["space", "signed_in"]);
+export type BotTemplateAudience = z.infer<typeof BotTemplateAudienceSchema>;
+
+/** A recurring schedule copied with a bot template. One-shot and connection triggers are left out. */
+export const BotTemplateRoutineSchema = z.object({
+  name: z.string(),
+  prompt: z.string(),
+  crons: z.array(z.string()),
+  timezone: z.string(),
+});
+export type BotTemplateRoutine = z.infer<typeof BotTemplateRoutineSchema>;
+
+/** A space member's published bot, safe to copy. `mine` is true only for the publisher. */
+export const BotTemplateSchema = z.object({
+  id: Id,
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  color: z.string(),
+  avatarSet: BotAvatarSetSchema,
+  routines: z.array(BotTemplateRoutineSchema),
+  audience: BotTemplateAudienceSchema,
+  mine: z.boolean(),
+  updatedAt: z.string(),
+});
+export type BotTemplate = z.infer<typeof BotTemplateSchema>;
+
 export const CreateBotInput = z.object({
   /** Optional reserved identity so a creation preview uses the final bot seed. */
   id: z

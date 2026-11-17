@@ -1,0 +1,14 @@
+appId: com.rakazo.app
+name: Bot templates
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      RAKAZO_ACTIVE_EMAIL: ${RAKAZO_SCREENSHOT_EMAIL}
+- openLink: "rakazo:///bot-templates"
+- extendedWaitUntil:
+    visible: "No templates yet"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 01-bot-templates-empty

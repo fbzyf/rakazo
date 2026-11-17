@@ -261,6 +261,20 @@ export const NL_MESSAGES: Record<string, string> = {
   Integrations: "Integraties",
   Models: "Modellen",
   "New bot": "Nieuwe bot",
+  "Bot templates": "Botsjablonen",
+  "Share as template": "Delen als sjabloon",
+  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.":
+    "Mensen in deze space kunnen hiervan hun eigen bot maken. Zij krijgen de instructies en schema's. Chats, geheugen en opgeslagen aanmeldingen blijven bij jou.",
+  "No templates yet": "Nog geen sjablonen",
+  "Remove template": "Sjabloon verwijderen",
+  "Could not share template": "Sjabloon delen mislukt",
+  "Could not use template": "Sjabloon gebruiken mislukt",
+  "This workspace": "Deze werkruimte",
+  "Everyone who can log in": "Iedereen die kan inloggen",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Wie dit sjabloon mag zien, kan de naam, beschrijving en instructies lezen. Zet er geen wachtwoorden, geheimen of klantgegevens in.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "De ander krijgt een eigen kopie. Schema's starten gepauzeerd. Chats, geheugen en opgeslagen aanmeldingen blijven bij jou.",
   "New group chat": "Nieuwe groepschat",
   "New private space": "Nieuwe privéspace",
   Routine: "Routine",

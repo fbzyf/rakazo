@@ -619,6 +619,20 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Needs takeover": "等待接管",
   "New password": "新密码",
   "New bot": "新建 Bot",
+  "Bot templates": "Bot 模板",
+  "Share as template": "发布为模板",
+  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.":
+    "这个工作区里的人可以据此创建自己的 Bot。他们会得到说明和定时任务。聊天、记忆和已保存的登录仍留在你这里。",
+  "No templates yet": "还没有模板",
+  "Remove template": "撤下模板",
+  "Could not share template": "无法发布模板",
+  "Could not use template": "无法使用模板",
+  "This workspace": "本工作区",
+  "Everyone who can log in": "所有已登录的人",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "能看到这个模板的人可以阅读它的名称、简介和说明。不要写入密码、密钥或客户资料。",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "对方得到自己的一份。定时任务开始时是暂停的。聊天、记忆和已保存的登录留在你这边。",
   "New group": "新建群组",
   "New group chat": "新建群聊",
   "New section": "新建分组",

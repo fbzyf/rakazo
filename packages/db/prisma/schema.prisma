@@ -72,6 +72,7 @@ model User {
   trustedLinkSites            TrustedLinkSite[]
   feedbackReports             FeedbackReport[]
   emailSends                  EmailSend[]
+  botTemplates                BotTemplate[]
   signupSurvey                SignupSurvey?
   computerRuns                ComputerRun[]
   devices                     UserDevice[]
@@ -485,6 +486,7 @@ model Space {
   agentSkillSpaces            AgentSkillSpace[]
   mcpServerSpaces             McpServerSpace[]
   capabilityInstallSpaces     CapabilityInstallSpace[]
+  botTemplates                BotTemplate[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -801,6 +803,7 @@ model Bot {
   ticketComments    TicketComment[]   @relation("TicketCommentAuthorBot")
 
   externalConversations ExternalConversation[]
+  publishedTemplates    BotTemplate[]
 
   @@unique([spaceId, spawnKey])
   @@index([spaceId, userId, archivedAt, pinned, updatedAt])
@@ -810,6 +813,36 @@ model Bot {
   @@map("bots")
   messagingInstallations MessagingInstallation[]
   messagingInstallSessions MessagingInstallSession[]
+}
+
+/// A bot's instructions and schedules, published for colleagues to copy.
+/// `audience` is `space` (this workspace only) or `signed_in` (anyone who can log in).
+/// Chats, memory, files, and credentials stay on the source bot.
+model BotTemplate {
+  id              String   @id @default(cuid())
+  spaceId         String
+  space           Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  /// Null after the publisher's account is deleted; the template stays for the space.
+  createdByUserId String?
+  createdByUser   User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  /// Null after the source bot is deleted. Republishing the same bot updates this row.
+  sourceBotId     String?
+  sourceBot       Bot?     @relation(fields: [sourceBotId], references: [id], onDelete: SetNull)
+  name            String
+  description     String   @default("")
+  instructions    String   @default("")
+  color           String
+  avatarSet       String   @default("organic")
+  /// Recurring schedules only: name, prompt, crons, timezone. Created paused on a copy.
+  routines        Json     @default("[]")
+  /// `space` or `signed_in`. Existing rows stay `space`.
+  audience        String   @default("space")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([spaceId, sourceBotId])
+  @@index([spaceId, updatedAt])
+  @@map("bot_templates")
 }
 
 model BotSection {

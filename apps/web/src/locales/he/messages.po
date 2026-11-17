@@ -1131,6 +1131,12 @@ msgstr "תצוגה מקדימה של מסך הבוט"
 msgid "Bot style"
 msgstr ""
 
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Bot templates"
+msgstr "תבניות בוטים"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Bot's model"
 msgstr "המודל של הבוט"
@@ -1225,6 +1231,7 @@ msgstr "לא ניתן לקרוא תמונות"
 #: src/pages/OrganizationSettingsPanel.tsx
 #: src/pages/PaymentWalletSettingsPanel.tsx
 #: src/pages/PluginSubmissionsPanel.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 #: src/pages/shell/create-bot-dialog.tsx
 #: src/pages/shell/dialogs.tsx
 #: src/pages/SpaceSettingOverrides.tsx
@@ -2341,6 +2348,10 @@ msgstr "לא ניתן לשלוח אימייל לאיפוס"
 msgid "Could not send that"
 msgstr "לא ניתן לשלוח את זה"
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "לא ניתן לשתף את התבנית"
+
 #: src/components/VaultSettings.tsx
 msgid "Could not show the credential"
 msgstr "לא ניתן היה להציג את פרטי הגישה"
@@ -2409,6 +2420,10 @@ msgstr "לא ניתן לעדכן את האמוג׳י"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not update the default memory scope"
 msgstr "לא ניתן לעדכן את היקף הזיכרון המוגדר כברירת מחדל"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "לא ניתן להשתמש בתבנית"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
@@ -3082,6 +3097,10 @@ msgstr "כל חודש"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "כל שבוע"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "כל מי שיכול להתחבר"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Executor token"
@@ -4487,6 +4506,10 @@ msgstr "עדיין אין מיומנויות"
 msgid "No submissions"
 msgstr ""
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "עדיין אין תבניות"
+
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "עדיין אין כרטיסים"
@@ -4887,6 +4910,10 @@ msgstr "מושהה"
 #: src/pages/PluginSubmissionsPanel.tsx
 msgid "Pending"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "מי שרשאי לראות את התבנית הזו יכול לקרוא את השם, התיאור וההוראות. אל תכלול סיסמאות, סודות או נתוני לקוחות."
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Permissions"
@@ -5305,6 +5332,10 @@ msgstr "הסרת המיומנות {0}"
 #: src/components/integrations/plugin-marketplace.tsx
 msgid "Remove skills"
 msgstr ""
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "הסרת התבנית"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -5869,12 +5900,18 @@ msgstr ""
 
 #: src/components/pages/PagesList.tsx
 #: src/components/pages/SharePopover.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
 msgid "Share"
 msgstr "שיתוף"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share “{title}”"
 msgstr "שיתוף „{title}”"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "שיתוף כתבנית"
 
 #: src/components/pages/SharePopover.tsx
 msgid "Share, anyone with the link can view"
@@ -6432,6 +6469,10 @@ msgstr "לא ניתן לקרוא את ההגדרות השמורות. יש להס
 msgid "They get {weeks} weeks free."
 msgstr "הם מקבלים {weeks} שבועות בחינם."
 
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "הם מקבלים עותק משלהם. לוחות הזמנים מתחילים מושהים. הצ'אטים, הזיכרון והכניסות השמורות נשארים אצלך."
+
 #: src/components/call/CallCard.tsx
 #: src/pages/ModelRoleSettings.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6596,6 +6637,10 @@ msgstr "התחברות עם המנוי הזה עדיין לא זמינה ב-Raka
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "השבוע"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "סביבת העבודה הזו"
 
 #: src/lib/cron.ts
 msgid "Thursday"
@@ -7115,6 +7160,10 @@ msgstr "איפה הבוטים ירוצו?"
 #: src/components/pages/SharePopover.tsx
 msgid "Who can open this page"
 msgstr "מי יכול לפתוח את הדף הזה"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "מי יכול להשתמש"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

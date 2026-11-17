@@ -248,6 +248,20 @@ export const JA_MESSAGES: Record<string, string> = {
   Integrations: "連携",
   Models: "モデル",
   "New bot": "新しいボット",
+  "Bot templates": "ボットテンプレート",
+  "Share as template": "テンプレートとして共有",
+  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.":
+    "このスペースの人は、これをもとに自分のボットを作れます。渡るのは指示とスケジュールです。チャット、メモリ、保存したサインインはあなたのもとに残ります。",
+  "No templates yet": "テンプレートはまだありません",
+  "Remove template": "テンプレートを取り下げる",
+  "Could not share template": "テンプレートを共有できませんでした",
+  "Could not use template": "テンプレートを使えませんでした",
+  "This workspace": "このワークスペース",
+  "Everyone who can log in": "ログインできる人全員",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "このテンプレートを見られる人は、名前、説明、指示を読めます。パスワード、秘密情報、顧客データを入れないでください。",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "相手は自分用のコピーを受け取ります。スケジュールは一時停止のまま始まります。チャット、メモリ、保存したログインはあなたのもとに残ります。",
   "New group chat": "新しいグループチャット",
   "New private space": "新しいプライベートスペース",
   Routine: "ルーティン",

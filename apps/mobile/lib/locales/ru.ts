@@ -642,6 +642,20 @@ export const RU_MESSAGES: Record<string, string> = {
   "Needs takeover": "Ожидает передачи управления",
   "New password": "Новый пароль",
   "New bot": "Новый бот",
+  "Bot templates": "Шаблоны ботов",
+  "Share as template": "Поделиться как шаблоном",
+  "People in this space can make their own bot from this. They get the instructions and schedules. Chats, memory, and saved sign-ins stay with you.":
+    "Люди в этом пространстве смогут сделать из этого своего бота. Им достанутся инструкции и расписания. Чаты, память и сохранённые входы остаются у вас.",
+  "No templates yet": "Шаблонов пока нет",
+  "Remove template": "Снять шаблон",
+  "Could not share template": "Не удалось поделиться шаблоном",
+  "Could not use template": "Не удалось использовать шаблон",
+  "This workspace": "Это рабочее пространство",
+  "Everyone who can log in": "Все, кто может войти",
+  "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.":
+    "Кто может видеть этот шаблон, прочитает его название, описание и инструкции. Не добавляйте пароли, секреты и данные клиентов.",
+  "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.":
+    "Другой человек получает свою копию. Расписания начинают работу на паузе. Чаты, память и сохранённые входы остаются у вас.",
   "New group chat": "Новый групповой чат",
   "New section": "Новый раздел",
   "Rename section": "Переименовать раздел",
