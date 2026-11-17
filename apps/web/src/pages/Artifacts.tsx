@@ -343,7 +343,7 @@ export function ArtifactsPage() {
             <PreviewPane
               key={artifactId}
               artifactId={artifactId}
-              listed={filteredItems.find((item) => item.id === artifactId)}
+              listed={filteredItems?.find((item) => item.id === artifactId)}
               maximized={maximized}
               onToggleMaximize={() => setMaximized((value) => !value)}
             />
