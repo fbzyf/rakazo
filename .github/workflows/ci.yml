@@ -21,6 +21,7 @@ concurrency:
 env:
   TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX: mirror.gcr.io/
 
+# This fork has no IncrediBuild runners. GitHub-hosted ubuntu-latest is what actually starts.
 jobs:
   # Pull requests skip suites their files cannot affect (see .github/scripts/changed-areas.sh); a
   # job skipped by `if` still satisfies a required check. Main skips this job, and with it every
