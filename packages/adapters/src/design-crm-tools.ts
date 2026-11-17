@@ -248,7 +248,8 @@ export async function getDesignCrmVisit(
 }
 
 function authorizeDesignCrmVisit(deps: DesignCrmVisitToolDeps) {
-  const allowed = parseDesignCrmAllowedEmails((deps.env ?? process.env).DESIGN_CRM_ALLOWED_EMAILS);
+  const env = deps.env ?? process.env;
+  const allowed = parseDesignCrmAllowedEmails(env.DESIGN_CRM_ALLOWED_EMAILS);
   if (!isDesignCrmReadAllowed(deps.actorEmail, allowed)) return { error: DESIGN_CRM_ACCESS_DENIED };
   if (!isDesignCrmVisitBot(deps.botName)) return { error: DESIGN_CRM_BOT_DENIED };
   return undefined;

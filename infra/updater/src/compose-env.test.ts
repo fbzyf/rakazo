@@ -81,7 +81,15 @@ const NOT_PASSED: Record<string, string> = {
  */
 const DENIED = {
   api: ["DATABASE_MIGRATION_URL"],
-  worker: ["BETTER_AUTH_SECRET", "DATABASE_MIGRATION_URL"],
+  worker: [
+    "BETTER_AUTH_SECRET",
+    "DATABASE_MIGRATION_URL",
+    // WeCom login is API-only, like the other identity-provider secrets.
+    "WECOM_AGENT_ID",
+    "WECOM_CORP_ID",
+    "WECOM_REDIRECT_URI",
+    "WECOM_SECRET",
+  ],
 } as const;
 
 /** Reads a source scan cannot see: names held in constants or read by third-party SDKs. */
@@ -201,11 +209,27 @@ describe("api and worker environment allowlists", () => {
   it("finds the reads it is meant to find", () => {
     const api = expectedKeys("api");
     const worker = expectedKeys("worker");
-    for (const key of ["DATABASE_URL", "ENCRYPTION_KEY", "OPENROUTER_API_KEY", "E2B_API_KEY"]) {
+    for (const key of [
+      "DATABASE_URL",
+      "ENCRYPTION_KEY",
+      "OPENROUTER_API_KEY",
+      "E2B_API_KEY",
+      "DESIGN_CRM_NOTION_TOKEN",
+      "DESIGN_CRM_NOTION_DATABASE_ID",
+      "DESIGN_CRM_ALLOWED_EMAILS",
+    ]) {
       expect(api).toContain(key);
       expect(worker).toContain(key);
     }
-    for (const key of ["BETTER_AUTH_SECRET", "OIDC_CLIENT_SECRET", "SCREEN_PROXY_SECRET"]) {
+    for (const key of [
+      "BETTER_AUTH_SECRET",
+      "OIDC_CLIENT_SECRET",
+      "SCREEN_PROXY_SECRET",
+      "WECOM_AGENT_ID",
+      "WECOM_CORP_ID",
+      "WECOM_REDIRECT_URI",
+      "WECOM_SECRET",
+    ]) {
       expect(api).toContain(key);
       expect(worker).not.toContain(key);
     }
