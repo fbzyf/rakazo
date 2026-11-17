@@ -9,7 +9,8 @@ Public signup is off (`SIGNUPS_ENABLED=false`). Create ordinary verified account
 server-side `bootstrap-owner` CLI. App accounts never administer the server.
 
 Talk to this fork's maintainer in Chinese. Never ask them to paste a private key, `.env`, or
-account password into chat.
+account password into chat. Shipping a new app image is [ops-deploy](../ops-deploy/SKILL.md),
+not this skill.
 
 Public-repo rules: no hostnames, IPs, emails, account names, or secret values in commits or PRs.
 Credentials stay on the production host and in mail sent from that host.
