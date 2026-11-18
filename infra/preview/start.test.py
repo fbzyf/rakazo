@@ -92,7 +92,12 @@ class PreviewBoot(unittest.TestCase):
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
-            output = process.communicate(timeout=3)[0].decode()
+            try:
+                output = process.communicate(timeout=3)[0].decode()
+            except subprocess.TimeoutExpired:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                output = process.communicate(timeout=3)[0].decode()
             if succeeds:
                 self.assertIn("[preview] Ready", output)
 

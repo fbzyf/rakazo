@@ -89,7 +89,17 @@ SQL
 }
 
 shutdown() {
-  kill $(jobs -pr) 2> /dev/null || true
+  # TERM, then KILL: EXIT must not block on a child that ignores TERM. The host
+  # stops this machine with SIGTERM; an unbounded `wait` keeps the process group alive.
+  local pids
+  pids=$(jobs -pr)
+  if [[ -n ${pids:-} ]]; then
+    kill $pids 2> /dev/null || true
+  fi
+  pids=$(jobs -pr)
+  if [[ -n ${pids:-} ]]; then
+    kill -KILL $pids 2> /dev/null || true
+  fi
   wait || true
   stop_database
 }
