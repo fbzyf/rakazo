@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Compact PR status for agents. Prints only what needs a decision.
+# Output is public-safe: no tokens, account IDs, or other non-public data.
 #
 #   pr-digest [PR]            one-shot digest
 #   pr-digest --watch [PR]    poll until checks settle, a check newly fails, or
