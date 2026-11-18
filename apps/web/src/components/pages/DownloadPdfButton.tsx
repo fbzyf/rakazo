@@ -1,31 +1,42 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { Download } from "lucide-react";
+import { downloadBytes, downloadFilename } from "../../lib/file-download";
 
 /**
- * Saves the open page as a PDF through the browser's print dialog. Whatever surrounds the page
- * marks itself `data-page-print`, so only the page reaches the paper (styles.css).
+ * Saves the open page as an HTML file. Print-to-PDF never reached the sandboxed page
+ * document, and workbench WebViews have no print dialog.
  */
 export function DownloadPdfButton({
   className,
   iconClassName = "size-4",
   labelClassName,
+  title,
+  document: html,
 }: {
   className: string;
   iconClassName?: string;
   labelClassName?: string;
+  title: string;
+  document: string;
 }) {
   const { t } = useLingui();
   return (
     <Button
       variant="ghost"
       className={className}
-      title={t`Opens your browser's print dialog. Choose Save as PDF as the destination.`}
-      onClick={() => window.print()}
+      title={t`Download`}
+      onClick={() => {
+        downloadBytes(
+          downloadFilename(title, "html"),
+          "text/html;charset=utf-8",
+          new TextEncoder().encode(html),
+        );
+      }}
     >
       <Download className={iconClassName} strokeWidth={1.5} />
       <span className={labelClassName}>
-        <Trans>Download PDF</Trans>
+        <Trans>Download</Trans>
       </span>
     </Button>
   );

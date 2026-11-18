@@ -2894,6 +2894,7 @@ msgstr "Done"
 msgid "Downgrade at renewal"
 msgstr "Downgrade at renewal"
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2911,10 +2912,6 @@ msgstr "Download {name}"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "Download CSV"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "Download PDF"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4726,10 +4723,6 @@ msgstr "OpenAI-compatible server URL"
 #: src/pages/shell/agent-import.tsx
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw or Hermes"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "Opens your browser's print dialog. Choose Save as PDF as the destination."
 
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx

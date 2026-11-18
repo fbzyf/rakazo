@@ -2894,6 +2894,7 @@ msgstr "Bitti"
 msgid "Downgrade at renewal"
 msgstr "Yenilemede alt pakete geç"
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2911,10 +2912,6 @@ msgstr "{name} indir"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "CSV indir"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "PDF indir"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4726,10 +4723,6 @@ msgstr "OpenAI uyumlu sunucu URL'si"
 #: src/pages/shell/agent-import.tsx
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw veya Hermes"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "Tarayıcınızın yazdırma penceresini açar. Hedef olarak PDF olarak kaydet'i seçin."
 
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx

@@ -84,29 +84,25 @@ test("a bot's page shows in its reply, opens full screen, is shared by link and 
     pageFrame(page, title).getByRole("heading", { name: "Test dashboard", level: 1 }),
   ).toBeVisible();
   await captureScreenshot(page, testInfo, "page-full-screen");
-  // Opening lands on Close, and Tab reaches the title, Download PDF and Share before anything in
+  // Opening lands on Close, and Tab reaches the title, Download and Share before anything in
   // the page.
   await expect(view.getByRole("button", { name: "Close page" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(view.getByRole("button", { name: title })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(view.getByRole("button", { name: "Download PDF" })).toBeFocused();
+  await expect(view.getByRole("button", { name: "Download" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(view.getByRole("button", { name: "Share" })).toBeFocused();
 
-  // Download PDF opens the print dialog, and on paper only the page shows: no controls, no
-  // composer, no chat behind it, and the page at its full height drawn light on a dark app.
-  await page.evaluate(() => {
-    const counted = window as Window & { printed?: number };
-    counted.printed = 0;
-    window.print = () => {
-      counted.printed = (counted.printed ?? 0) + 1;
-    };
-  });
-  await view.getByRole("button", { name: "Download PDF" }).click();
-  expect(await page.evaluate(() => (window as Window & { printed?: number }).printed)).toBe(1);
+  // Download saves the page HTML. On paper, only the page shows: no controls, no composer,
+  // no chat behind it, and the page at its full height drawn light on a dark app.
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    view.getByRole("button", { name: "Download" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(`${title}.html`);
   await page.emulateMedia({ media: "print" });
-  for (const name of ["Close page", title, "Download PDF", "Share"]) {
+  for (const name of ["Close page", title, "Download", "Share"]) {
     await expect(view.getByRole("button", { name })).toBeHidden();
   }
   await expect(page.getByRole("combobox", { name: /^Message/ })).toBeHidden();
@@ -234,7 +230,7 @@ test("a bot's page shows in its reply, opens full screen, is shared by link and 
     "noindex, nofollow",
   );
   await expect(outside.getByRole("heading", { name: "Signups dashboard", level: 1 })).toBeVisible();
-  await expect(outside.getByRole("button", { name: "Download PDF" })).toBeVisible();
+  await expect(outside.getByRole("button", { name: "Download" })).toBeVisible();
   await expect(outside.getByRole("link", { name: "Open Rakazo" })).toBeVisible();
   await expect(pageFrame(outside, "Signups dashboard").getByText("$12,400")).toBeVisible();
   // There is no chat beside a shared page, so its reply buttons do nothing.

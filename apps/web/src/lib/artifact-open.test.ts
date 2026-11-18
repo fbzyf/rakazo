@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const selected = vi.hoisted(() => ({ spaceId: "space-1" as string | null }));
+const wecom = vi.hoisted(() => ({ current: false }));
 vi.mock("./rpc", () => ({
   selectedSpaceId: () => selected.spaceId,
   withSpaceHeaders: (init?: HeadersInit) => {
@@ -9,6 +10,9 @@ vi.mock("./rpc", () => ({
     if (selected.spaceId) headers.set("x-rakazo-space-id", selected.spaceId);
     return headers;
   },
+}));
+vi.mock("./wecom-webview", () => ({
+  isWeComWebView: () => wecom.current,
 }));
 
 import {
@@ -36,6 +40,7 @@ describe("artifactContentUrl", () => {
 describe("artifact binary fetch and download", () => {
   beforeEach(() => {
     selected.spaceId = "space-1";
+    wecom.current = false;
     vi.stubGlobal("fetch", vi.fn());
   });
   afterEach(() => {
@@ -60,6 +65,14 @@ describe("artifact binary fetch and download", () => {
     await expect(fetchArtifactBytes({ groupId: "g" }, "art-1")).rejects.toMatchObject({
       status: 502,
     });
+  });
+
+  it("navigates in the workbench WebView instead of a synthetic download click", async () => {
+    wecom.current = true;
+    const assign = vi.fn();
+    vi.stubGlobal("location", { assign });
+    await downloadArtifact({ botId: "bot-1" }, "art-1", "clip.mp4", "video/mp4");
+    expect(assign).toHaveBeenCalledWith("/api/artifacts/art-1?space=space-1&download=1");
   });
 
   it("downloads through a same-origin link instead of fetching the file into memory", async () => {

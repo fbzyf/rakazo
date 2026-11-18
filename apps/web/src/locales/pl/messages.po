@@ -2894,6 +2894,7 @@ msgstr "Gotowe"
 msgid "Downgrade at renewal"
 msgstr "Niższy plan od odnowienia"
 
+#: src/components/pages/DownloadPdfButton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "Download"
@@ -2911,10 +2912,6 @@ msgstr "Pobierz {name}"
 #: src/components/markdown-copy.tsx
 msgid "Download CSV"
 msgstr "Pobierz CSV"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Download PDF"
-msgstr "Pobierz PDF"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -4726,10 +4723,6 @@ msgstr "Adres serwera zgodnego z OpenAI"
 #: src/pages/shell/agent-import.tsx
 msgid "OpenClaw or Hermes"
 msgstr "OpenClaw lub Hermes"
-
-#: src/components/pages/DownloadPdfButton.tsx
-msgid "Opens your browser's print dialog. Choose Save as PDF as the destination."
-msgstr "Otwiera okno drukowania przeglądarki. Jako drukarkę wybierz Zapisz jako PDF."
 
 #: src/components/SignupSurvey.tsx
 #: src/pages/model-settings/connection-controls.tsx

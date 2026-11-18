@@ -1,3 +1,4 @@
+import { downloadBytes, startNamedFileDownload } from "./file-download";
 import { selectedSpaceId, withSpaceHeaders } from "./rpc";
 
 export type ArtifactTarget = { botId: string } | { groupId: string };
@@ -48,24 +49,12 @@ export async function fetchArtifactBytes(
 }
 
 export function downloadArtifactBytes(name: string, mimeType: string, bytes: Uint8Array): void {
-  const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  downloadBytes(name, mimeType, bytes);
 }
 
 /** Saves the file through a same-origin navigation so WebViews that block blob downloads still get it. */
 export function startArtifactDownload(artifactId: string, name: string): void {
-  const anchor = document.createElement("a");
-  anchor.href = artifactContentUrl(artifactId, { download: true });
-  anchor.download = name;
-  anchor.rel = "noopener";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
+  startNamedFileDownload(artifactContentUrl(artifactId, { download: true }), name);
 }
 
 export async function downloadArtifact(

@@ -46,7 +46,14 @@ export function PublicPageShell({ title, document }: { title: string; document: 
               {copied ? <Trans>Copied</Trans> : <Trans>Copy link</Trans>}
             </span>
           </Button>
-          <DownloadPdfButton className={ACTION} labelClassName="max-[560px]:sr-only" />
+          {document !== null ? (
+            <DownloadPdfButton
+              className={ACTION}
+              labelClassName="max-[560px]:sr-only"
+              title={title}
+              document={document}
+            />
+          ) : null}
           <span role="status" className="sr-only">
             {copied ? t`Link copied` : ""}
           </span>

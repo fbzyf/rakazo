@@ -49,6 +49,7 @@ it("waits for an updated page to draw, and offers a retry when it never does", a
   await view.render({ document: "<p>v1</p>" });
   await act(async () => frame.drawn?.());
   expect(document.body.textContent).not.toContain("This page couldn't load");
+  expect(document.querySelector(".pointer-events-auto.z-20")).not.toBeNull();
 
   await view.render({ document: "<p>v2</p>" });
   await act(async () => vi.advanceTimersByTime(16_000));

@@ -14,7 +14,7 @@ const FRAME_TIMEOUT_MS = 15_000;
 
 /**
  * A page full screen: close at the top left, the title pill in the middle (click to rename),
- * Download PDF and sharing at the top right, and the bot's composer docked over the bottom of the
+ * Download and sharing at the top right, and the bot's composer docked over the bottom of the
  * page. Printed, only the page shows, at its full height.
  */
 export function PageView({
@@ -111,7 +111,7 @@ export function PageView({
           <DialogClose
             ref={closeButton}
             aria-label={t`Close page`}
-            className={`absolute z-10 grid place-items-center print:hidden ${compact ? "top-[6px] left-[6px] size-11" : "top-[6px] left-[11px] size-9"} rounded-full border border-foreground/[0.06] text-foreground/90 outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring`}
+            className={`absolute z-20 grid place-items-center print:hidden ${compact ? "top-[6px] left-[6px] size-11" : "top-[6px] left-[11px] size-9"} rounded-full border border-foreground/[0.06] text-foreground/90 outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring`}
           >
             <X className={compact ? "size-6" : "size-[18px]"} strokeWidth={compact ? 2.2 : 1.7} />
           </DialogClose>
@@ -133,18 +133,20 @@ export function PageView({
           </div>
           {/* Touch controls sit 6px in from the sheet's 28px corners: 22px round plus 6 is 28. */}
           <div
-            className={`absolute z-10 flex items-center gap-1.5 print:hidden ${compact ? "top-[6px] right-[6px]" : "top-[6.5px] right-3"}`}
+            className={`pointer-events-auto absolute z-20 flex items-center gap-1.5 print:hidden ${compact ? "top-[6px] right-[6px]" : "top-[6.5px] right-3"}`}
           >
-            {drawn && !stalled && notice === null ? (
+            {drawn && document !== null && !stalled && notice === null ? (
               <DownloadPdfButton
                 className={control}
                 iconClassName={compact ? "size-5" : "size-[18px]"}
                 labelClassName="sr-only"
+                title={title}
+                document={document}
               />
             ) : null}
             {share}
           </div>
-          {/* After the controls, so Tab reaches Close, Download PDF and Share before the page's stops. */}
+          {/* After the controls, so Tab reaches Close, Download and Share before the page's stops. */}
           <section
             aria-label={title || undefined}
             className={`absolute inset-x-0 bottom-0 print:static ${compact ? "top-[50px]" : "top-[34px]"}`}
