@@ -55,7 +55,7 @@ The API image `WORKDIR` is `/app`. Compose sets the API service working director
 `MODULE_NOT_FOUND`. Always pass `-w /app/apps/api` (or the absolute path
 `/app/apps/api/dist/cli/bootstrap-owner.js`).
 
-Do not wrap the exec in `set -e` *before* credentials are printed. The CLI prints a TSV row
+Do not wrap the exec in `set -e` _before_ credentials are printed. The CLI prints a TSV row
 as soon as the user exists, then creates the personal workspace. Capture stdout even if the
 process later exits non-zero.
 
@@ -90,12 +90,12 @@ Do not put `#` in a password if any wrapping `sh -c` might treat it as a comment
 
 Header plus one row per account: `status`, `email`, `password`.
 
-| status | meaning |
-|---|---|
-| `created` | new verified account; password column is the credential |
-| `verified` | existing unverified account; supplied password matched |
-| `reset` | `OWNER_RESET_PASSWORD=1` set a new password |
-| `exists` | already verified; password column empty; not changed |
+| status     | meaning                                                 |
+| ---------- | ------------------------------------------------------- |
+| `created`  | new verified account; password column is the credential |
+| `verified` | existing unverified account; supplied password matched  |
+| `reset`    | `OWNER_RESET_PASSWORD=1` set a new password             |
+| `exists`   | already verified; password column empty; not changed    |
 
 An existing unverified account is not verified unless the supplied password matches. Re-running
 for a verified account is a no-op unless `OWNER_RESET_PASSWORD=1`.
