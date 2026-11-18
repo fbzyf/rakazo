@@ -108,12 +108,12 @@ export function BotTemplatesDialog({
           </DialogTitle>
         </DialogHeader>
         {error ? (
-          <p role="alert" className="text-[13px] text-destructive">
+          <p role="alert" className="text-body-sm text-destructive">
             {error}
           </p>
         ) : null}
         {templates && templates.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             <Trans>No templates yet</Trans>
           </p>
         ) : null}
@@ -139,23 +139,23 @@ export function BotTemplatesDialog({
                       size={36}
                     />
                     <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-medium">
+                      <span className="block truncate text-body-lg font-medium">
                         {template.name}
                       </span>
                       {template.description ? (
-                        <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        <span className="mt-0.5 block text-body-sm text-muted-foreground">
                           {template.description}
                         </span>
                       ) : null}
                     </span>
                   </span>
                   {template.audience === "signed_in" ? (
-                    <span className="block text-[12px] text-muted-foreground">
+                    <span className="block text-body-sm text-muted-foreground">
                       <Trans>Everyone who can log in</Trans>
                     </span>
                   ) : null}
                   {templateExcerpt(template.instructions) ? (
-                    <span className="block rounded-lg bg-background p-3 text-[13px] leading-5 text-foreground">
+                    <span className="block rounded-lg bg-background p-3 text-body-sm leading-5 text-foreground">
                       {templateExcerpt(template.instructions)}
                     </span>
                   ) : null}
@@ -218,13 +218,13 @@ export function ShareTemplateDialog({
           value={audience}
           onValueChange={(value) => setAudience(value === "signed_in" ? "signed_in" : "space")}
         >
-          <p id={audienceLabelId} className="text-[13px] text-foreground">
+          <p id={audienceLabelId} className="text-body-sm text-foreground">
             <Trans>Who can use it</Trans>
           </p>
           {/* biome-ignore lint/a11y/noLabelWithoutControl: the wrapped RadioGroupItem is the control. */}
           <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
             <RadioGroupItem value="space" className="mt-0.5" data-testid="share-audience-space" />
-            <span className="text-[14px] text-foreground">
+            <span className="text-body text-foreground">
               <Trans>This workspace</Trans>
             </span>
           </label>
@@ -235,19 +235,19 @@ export function ShareTemplateDialog({
               className="mt-0.5"
               data-testid="share-audience-signed-in"
             />
-            <span className="text-[14px] text-foreground">
+            <span className="text-body text-foreground">
               <Trans>Everyone who can log in</Trans>
             </span>
           </label>
         </RadioGroup>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body-sm text-muted-foreground">
           <Trans>
             They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay
             with you.
           </Trans>
         </p>
         {error ? (
-          <p role="alert" className="text-[13px] text-destructive">
+          <p role="alert" className="text-body-sm text-destructive">
             {error}
           </p>
         ) : null}
