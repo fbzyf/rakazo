@@ -998,6 +998,7 @@ function SpaceShell() {
         navigate={navigate}
         setNewSpaceOpen={dialogs.setNewSpaceOpen}
         setCreateBotOpen={dialogs.setCreateBotOpen}
+        setBotTemplatesOpen={dialogs.setBotTemplatesOpen}
         botVisibility={botVisibility}
         onToggleBotVisibility={() => {
           const next = botVisibility === "mine" ? "space" : "mine";

@@ -73,6 +73,7 @@ export function ShellSidebar({
   navigate,
   setNewSpaceOpen,
   setCreateBotOpen,
+  setBotTemplatesOpen,
   botVisibility,
   onToggleBotVisibility,
   roster,
@@ -104,6 +105,7 @@ export function ShellSidebar({
   navigate: (path: string) => void;
   setNewSpaceOpen: (open: boolean) => void;
   setCreateBotOpen: (open: boolean) => void;
+  setBotTemplatesOpen: (open: boolean) => void;
   botVisibility: BotRosterVisibility;
   onToggleBotVisibility: () => void;
   roster: ReactNode;
@@ -194,6 +196,7 @@ export function ShellSidebar({
           navigate={navigate}
           setNewSpaceOpen={setNewSpaceOpen}
           setCreateBotOpen={setCreateBotOpen}
+          setBotTemplatesOpen={setBotTemplatesOpen}
         />
         {mini ||
         !(

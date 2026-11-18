@@ -479,6 +479,14 @@ function LayoutContent() {
                       }}
                     />
                     <Stack.Screen
+                      name="shared-bot-templates"
+                      options={{
+                        title: t`Bot templates`,
+                        presentation: "modal",
+                        gestureEnabled: true,
+                      }}
+                    />
+                    <Stack.Screen
                       name="new-group"
                       options={{
                         title: t`New group chat`,

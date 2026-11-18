@@ -11423,3 +11423,55 @@ msgstr "拒绝授权"
 #: apps/web/src/lib/user-error.ts
 msgid "未绑定"
 msgstr "未绑定"
+
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "テンプレートを共有できませんでした"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "テンプレートを使えませんでした"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "ログインできる人全員"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "テンプレートはまだありません"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "このテンプレートを見られる人は、名前、説明、指示を読めます。パスワード、秘密情報、顧客データを入れないでください。"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "テンプレートを取り下げる"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/BotContextMenu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "テンプレートとして共有"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "相手は自分用のコピーを受け取ります。スケジュールは一時停止のまま始まります。チャット、メモリ、保存したログインはあなたのもとに残ります。"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "このワークスペース"
+
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "誰が使えますか"

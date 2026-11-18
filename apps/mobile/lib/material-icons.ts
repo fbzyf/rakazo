@@ -1,5 +1,6 @@
 export const materialIcons = {
   person_add: require("../assets/material-icons/person_add.xml"),
+  article: require("../assets/material-icons/article.xml"),
   group: require("../assets/material-icons/group.xml"),
   grid_view: require("../assets/material-icons/grid_view.xml"),
 };

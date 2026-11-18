@@ -27,6 +27,24 @@ until you turn it on. Nothing is connected for you: the new chat asks for the ap
 with, and it still works without them where it can. Creating the same template again opens the bot
 you already made.
 
+## Share a bot as a template
+
+Choose **Create**, then **Bot templates**, and pick a card. You get your own bot: the name,
+description, instructions, and look. Recurring schedules come along and start paused, so nothing
+runs until you turn one on. On a phone, **Bot templates** is in the same create menu.
+
+This is separate from the ready-made catalog in **Connect apps** or **Skills**.
+
+To publish one of your bots, right-click it and choose **Share as template**. On a phone, open the
+bot and choose **Share as template**. Before it is saved, choose who can see it. **This workspace**
+is the default: only people in that workspace can copy it. **Everyone who can log in** lets anyone
+who can sign in to this Rakazo copy it. It is not visible on the open internet.
+
+The name, description, and instructions are readable by whoever you allow, so do not put passwords,
+secrets, or customer data in them. Chats, memory, files, and saved sign-ins stay on your bot.
+Changing your bot later does not change copies people already made. Publish again to update the
+template, or remove it. Copies that were already made stay.
+
 ## Talk to it
 
 Type in the composer and press Enter. You can keep chatting while a bot works, and **Stop** ends

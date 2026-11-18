@@ -9,19 +9,21 @@ import {
   CommandList,
   CommandSeparator,
 } from "@rakazo/ui-web";
-import { Info, Lock, Plus, Users } from "lucide-react";
+import { Info, LayoutTemplate, Lock, Plus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { IconTooltip } from "../../components/IconTooltip";
 
 export function BotCreatePicker({
   bots,
   onCreateBot,
+  onOpenTemplates,
   onOpenBot,
   onCreateGroup,
   onCreateSpace,
 }: {
   bots: Bot[];
   onCreateBot: () => void;
+  onOpenTemplates: () => void;
   onOpenBot: (botId: string) => void;
   onCreateGroup: () => void;
   onCreateSpace: () => void;
@@ -74,6 +76,17 @@ export function BotCreatePicker({
                 <Trans>New bot</Trans>
               </CommandItem>
             ) : null}
+            <CommandItem
+              value="published-bot-templates"
+              data-testid="open-published-bot-templates"
+              onSelect={() => onOpenTemplates()}
+              className="gap-2"
+            >
+              <span className="flex size-[22px] shrink-0 items-center justify-center">
+                <LayoutTemplate size={16} strokeWidth={1.8} aria-hidden="true" />
+              </span>
+              <Trans>Bot templates</Trans>
+            </CommandItem>
             <CommandItem
               value="create-group"
               data-testid="create-new-group"

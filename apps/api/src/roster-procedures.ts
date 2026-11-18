@@ -26,6 +26,7 @@ export const ROSTER_PROCEDURES: Record<string, RosterScope> = {
   "bots.create": actorSpace,
   "bots.importCreate": actorSpace,
   "bots.createFromTemplate": actorSpace,
+  "botTemplates.use": actorSpace,
   "bots.duplicate": actorSpace,
   "bots.reorder": actorSpace,
   "bots.update": actorSpace,
