@@ -49,7 +49,7 @@ function reposFor(memoryScope: string | null) {
 
 describe("createRepos.listBots", () => {
   it("defaults to the actor's own bots and omits another member's preview", async () => {
-    const findMany = vi.fn(async () => [baseBot]);
+    const findMany = vi.fn(async (_query: { where?: unknown }) => [baseBot]);
     const prisma = {
       bot: { findMany },
       run: { findMany: vi.fn(async () => []) },
@@ -69,7 +69,7 @@ describe("createRepos.listBots", () => {
   });
 
   it("returns the full space roster when visibility is space", async () => {
-    const findMany = vi.fn(async () => [baseBot]);
+    const findMany = vi.fn(async (_query: { where?: unknown }) => [baseBot]);
     const prisma = {
       bot: { findMany },
       run: { findMany: vi.fn(async () => []) },
@@ -568,7 +568,7 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
   });
 
   it("returns every space bot when visibility is space", async () => {
-    const findMany = vi.fn(async () => []);
+    const findMany = vi.fn(async (_query: { where?: unknown }) => []);
     const repos = createRepos({
       bot: { findMany },
       $queryRaw: vi.fn(async () => []),
@@ -644,7 +644,7 @@ describe("createRepos.reorderBots", () => {
 describe("createRepos.listedBot", () => {
   it("maps a same-space bot with preview without listing the mine roster", async () => {
     const findFirst = vi.fn(async () => ({ id: "bot-2" }));
-    const findMany = vi.fn(async () => [
+    const findMany = vi.fn(async (_query: { where?: unknown }) => [
       {
         ...baseBot,
         id: "bot-2",
