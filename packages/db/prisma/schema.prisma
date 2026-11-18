@@ -97,6 +97,7 @@ model User {
   computerRuns                ComputerRun[]
   devices                     UserDevice[]
   wecomBindings               WecomUserBinding[]
+  publishedBotTemplates       BotTemplate[]
 
   @@unique([email])
   @@map("user")
@@ -691,6 +692,7 @@ model Space {
   agentSkillSpaces            AgentSkillSpace[]
   mcpServerSpaces             McpServerSpace[]
   capabilityInstallSpaces     CapabilityInstallSpace[]
+  botTemplates                BotTemplate[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -1039,6 +1041,33 @@ model Bot {
   @@map("bots")
   messagingInstallations MessagingInstallation[]
   messagingInstallSessions MessagingInstallSession[]
+  publishedTemplates BotTemplate[]
+}
+
+/// A bot a colleague published for others to copy. Audience `space` stays in one workspace;
+/// `signed_in` is visible to anyone who can log in. There is no internet-public option.
+model BotTemplate {
+  id              String   @id @default(cuid())
+  spaceId         String
+  space           Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdByUser   User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sourceBotId     String?
+  sourceBot       Bot?     @relation(fields: [sourceBotId], references: [id], onDelete: SetNull)
+  name            String
+  description     String   @default("")
+  instructions    String   @default("")
+  color           String
+  avatarSet       String   @default("organic")
+  routines        Json     @default("[]")
+  /// `space` or `signed_in`. Existing rows stay `space`.
+  audience        String   @default("space")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([spaceId, sourceBotId])
+  @@index([spaceId, updatedAt])
+  @@map("bot_templates")
 }
 
 model BotSection {

@@ -376,10 +376,15 @@ describe("bot profile", () => {
       }[]
     )();
     const items = menu!.menu.items;
-    expect(items.map((item) => item.label)).toEqual(["Clear conversation", "Archive", "Delete…"]);
+    expect(items.map((item) => item.label)).toEqual([
+      "Share as template",
+      "Clear conversation",
+      "Archive",
+      "Delete…",
+    ]);
     const cleared = vi.fn();
     const stop = onConversationCleared(cleared);
-    items[0]!.onPress();
+    items.find((item) => item.label === "Clear conversation")!.onPress();
     const [, , buttons] = alert.mock.lastCall as [
       string,
       string,

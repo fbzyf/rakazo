@@ -11423,3 +11423,55 @@ msgstr "拒绝授权"
 #: apps/web/src/lib/user-error.ts
 msgid "未绑定"
 msgstr "未绑定"
+
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "No se pudo compartir la plantilla"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "No se pudo usar la plantilla"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Quien pueda iniciar sesión"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Aún no hay plantillas"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Quien pueda ver esta plantilla puede leer su nombre, descripción e instrucciones. No incluyas contraseñas, secretos ni datos de clientes."
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Quitar plantilla"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/BotContextMenu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Compartir como plantilla"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "La otra persona recibe su propia copia. Los horarios empiezan en pausa. Los chats, la memoria y los inicios de sesión guardados se quedan contigo."
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Este espacio de trabajo"
+
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Quién puede usarla"

@@ -48,6 +48,12 @@
     "screens": ["new-space", "new-bot", "new-group"]
   },
   {
+    "id": "shared-bot-templates",
+    "title": "Shared bot templates",
+    "flow": "flows/shared-bot-templates.yaml",
+    "screens": ["shared-bot-templates"]
+  },
+  {
     "id": "split-view",
     "title": "Split view",
     "flow": "flows/split-view.yaml",

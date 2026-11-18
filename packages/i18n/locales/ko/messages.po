@@ -11423,3 +11423,55 @@ msgstr "拒绝授权"
 #: apps/web/src/lib/user-error.ts
 msgid "未绑定"
 msgstr "未绑定"
+
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "템플릿을 공유할 수 없습니다"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "템플릿을 사용할 수 없습니다"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "로그인할 수 있는 모든 사람"
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "아직 템플릿이 없습니다"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "이 템플릿을 볼 수 있는 사람은 이름, 설명, 지시문을 읽을 수 있습니다. 비밀번호, 비밀 정보, 고객 데이터를 넣지 마세요."
+
+#: apps/mobile/app/shared-bot-templates.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "템플릿 내리기"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/BotContextMenu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "템플릿으로 공유"
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "상대는 자신의 복사본을 받습니다. 일정은 일시 중지된 채로 시작합니다. 채팅, 메모리, 저장된 로그인은 그대로 남습니다."
+
+#: apps/mobile/components/bot-profile-menu.tsx
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "이 작업 공간"
+
+#: apps/web/src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "누가 사용할 수 있나요"

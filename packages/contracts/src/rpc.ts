@@ -197,6 +197,7 @@ import {
   SpendingPaymentSchema,
   SpendingStatusSchema,
 } from "./payments.js";
+import { BotTemplateAudienceSchema, PublishedBotTemplateSchema } from "./published-bot-template.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineWatchSchema } from "./routine-watch.js";
 import {
@@ -647,6 +648,14 @@ export const appContract = {
       }),
     ),
     revealWebhookSecret: oc.input(botId).output(z.object({ secret: z.string() })),
+  },
+  botTemplates: {
+    list: oc.output(z.array(PublishedBotTemplateSchema)),
+    publish: oc
+      .input(botId.safeExtend({ audience: BotTemplateAudienceSchema.default("space") }))
+      .output(PublishedBotTemplateSchema),
+    remove: oc.input(z.object({ templateId: Id })).output(z.object({ ok: z.literal(true) })),
+    use: oc.input(z.object({ templateId: Id })).output(BotSchema),
   },
   groups: {
     create: oc.input(CreateGroupInput).output(GroupSchema),
