@@ -289,6 +289,7 @@ export * from "./secrets/secret-cleanup.js";
 export * from "./secrets/secret-migration.js";
 export * from "./secrets/secret-persistence.js";
 export * from "./secrets/secret-store-factory.js";
+export * from "./design-crm-tools.js";
 export * from "./secrets/secrets.js";
 export * from "./secrets/vault/page-share-secrets.js";
 export { listVaultItemUses } from "./secrets/vault/vault-activity.js";

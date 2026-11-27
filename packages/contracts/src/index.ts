@@ -26,6 +26,7 @@ export * from "./bots/bot-memory.js";
 export * from "./bots/bot-secrets.js";
 export * from "./bots/bot-settings-layout.js";
 export * from "./bots/bot-template.js";
+export * from "./bots/published-bot-template.js";
 export * from "./bots/builtin-tools.js";
 export * from "./bots/scratchpad.js";
 export * from "./clients/client-build.js";

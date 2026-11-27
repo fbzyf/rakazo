@@ -656,7 +656,8 @@ function Home({ embedded, onSelectSpace, onShareSelect }: InboxPaneProps & { emb
 
   const runCreateAction = useCallback(
     (action: CreateAction) => {
-      if (action === "bot") newBot();
+      if (action === "templates") router.push("/bot-templates");
+      else if (action === "bot") newBot();
       else openCreate(action === "group" ? "/new-group" : "/new-space");
     },
     [newBot, openCreate],

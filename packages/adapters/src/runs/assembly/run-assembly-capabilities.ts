@@ -1,6 +1,7 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import { disabledBuiltinToolSet } from "@rakazo/contracts";
+import { isDesignCrmVisitBot } from "../../design-crm-tools.js";
 import {
   BACKGROUND_HELPER_TRIGGER,
   chatAppConnectNote,
@@ -759,6 +760,7 @@ export async function selectRunTools(
       emailInbox,
       emailClaimable: Boolean(deps.inboundEmailDomain) && !emailName && run.userId === bot.userId,
       emailSend: Boolean(deps.email),
+      designCrmVisitEnabled: isDesignCrmVisitBot(bot.name),
     }).filter(
       (tool) => tool.name !== "run_subagent" || backgroundHelpersAllowed({ trigger: run.trigger }),
     ),

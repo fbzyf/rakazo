@@ -156,4 +156,5 @@ export * from "./threads/chat-snooze.js";
 export * from "./threads/thread-message-updates.js";
 export * from "./threads/thread-scroll.js";
 export * from "./threads/thread-snapshot-events.js";
+export * from "./thread-snapshot.js";
 export * from "./threads/thread-subscription.js";

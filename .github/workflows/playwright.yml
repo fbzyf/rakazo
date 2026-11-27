@@ -45,6 +45,7 @@ permissions:
 env:
   TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX: mirror.gcr.io/
 
+# This fork has no IncrediBuild runners. GitHub-hosted ubuntu-latest is what actually starts.
 jobs:
   # Six light shards × two workers. page-browser and pages each get their own job below so they
   # cannot land on the same shard and set the floor. Six (not ten) keeps runner minutes down while

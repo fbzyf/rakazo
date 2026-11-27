@@ -57,7 +57,12 @@ import { WindowChrome } from "../../components/WindowChrome";
 import { takeInitialBootstrap } from "../../lib/bootstrap";
 import { useCopyText } from "../../lib/copy-text";
 import { formatRelativeTime } from "../../lib/locale/relative-time";
-import { decodeArtifactBase64, downloadArtifactBytes } from "../../lib/pages/artifact-open";
+import {
+  artifactContentUrl,
+  decodeArtifactBase64,
+  downloadArtifactBytes,
+  startArtifactDownload,
+} from "../../lib/pages/artifact-open";
 import { selectFilePreviewContents } from "../../lib/pages/file-preview-selection";
 import { useObjectUrl } from "../../lib/pages/use-object-url";
 import { desktopBridge } from "../../lib/platform/desktop";
@@ -357,6 +362,7 @@ export function ArtifactsPage() {
             <PreviewPane
               key={artifactId}
               artifactId={artifactId}
+              listed={filteredItems?.find((item) => item.id === artifactId)}
               maximized={maximized}
               onToggleMaximize={() => setMaximized((value) => !value)}
             />
@@ -901,10 +907,12 @@ function ArtifactMimeIcon({ mimeType, small }: { mimeType: string; small?: boole
 
 function PreviewPane({
   artifactId,
+  listed,
   maximized,
   onToggleMaximize,
 }: {
   artifactId: string;
+  listed?: ArtifactSummary;
   maximized: boolean;
   onToggleMaximize: () => void;
 }) {
@@ -921,11 +929,13 @@ function PreviewPane({
   const selectedVersionId =
     pickedVersionId ??
     (versions ? (versions[0]?.id ?? artifactId) : versionsQuery.isError ? artifactId : null);
-  const artifactQuery = useQuery(
-    queries.artifacts.getById.queryOptions({
+  const listedVideo = listed ? artifactPreviewKind(listed.mimeType) === "video" : false;
+  const artifactQuery = useQuery({
+    ...queries.artifacts.getById.queryOptions({
       input: selectedVersionId ? { artifactId: selectedVersionId } : skipToken,
     }),
-  );
+    enabled: Boolean(selectedVersionId) && !listedVideo,
+  });
   const bytes = useMemo(
     () => (artifactQuery.data ? decodeArtifactBase64(artifactQuery.data.contentBase64) : null),
     [artifactQuery.data],
@@ -934,14 +944,16 @@ function PreviewPane({
     | { status: "loading" }
     | { status: "ready"; artifact: Artifact; bytes: Uint8Array }
     | { status: "error"; message: string } =
-    artifactQuery.data && bytes
-      ? { status: "ready", artifact: artifactQuery.data, bytes }
-      : artifactQuery.error
-        ? {
-            status: "error",
-            message: errorText(artifactQuery.error, t`Could not load this artifact.`),
-          }
-        : { status: "loading" };
+    listedVideo && listed
+      ? { status: "ready", artifact: listed, bytes: new Uint8Array() }
+      : artifactQuery.data && bytes
+        ? { status: "ready", artifact: artifactQuery.data, bytes }
+        : artifactQuery.error
+          ? {
+              status: "error",
+              message: errorText(artifactQuery.error, t`Could not load this artifact.`),
+            }
+          : { status: "loading" };
 
   return (
     <section
@@ -1006,7 +1018,9 @@ function PreviewPane({
               variant="outline"
               size="sm"
               onClick={() =>
-                downloadArtifactBytes(state.artifact.name, state.artifact.mimeType, state.bytes)
+                listedVideo && selectedVersionId
+                  ? startArtifactDownload(selectedVersionId, state.artifact.name)
+                  : downloadArtifactBytes(state.artifact.name, state.artifact.mimeType, state.bytes)
               }
             >
               <Download className="me-1.5" size={15} strokeWidth={1.9} />
@@ -1042,7 +1056,11 @@ function PreviewPane({
           </div>
         ) : (
           <div className="relative h-full overflow-hidden rounded-2xl border border-border">
-            <ArtifactPreview artifact={state.artifact} bytes={state.bytes} />
+            <ArtifactPreview
+              artifact={state.artifact}
+              bytes={state.bytes}
+              contentId={selectedVersionId ?? state.artifact.id}
+            />
             {state.artifact.mimeType === "text/html" ? (
               <div className="absolute bottom-3 end-3 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1.5 text-caption text-white">
                 <Lock size={12} strokeWidth={2} />
@@ -1058,8 +1076,18 @@ function PreviewPane({
   );
 }
 
-function ArtifactPreview({ artifact, bytes }: { artifact: Artifact; bytes: Uint8Array }) {
+function ArtifactPreview({
+  artifact,
+  bytes,
+  contentId,
+}: {
+  artifact: Artifact;
+  bytes: Uint8Array;
+  contentId: string;
+}) {
   switch (artifactPreviewKind(artifact.mimeType)) {
+    case "video":
+      return <VideoPreview src={artifactContentUrl(contentId)} name={artifact.name} />;
     case "html":
       return (
         <SandboxedHtmlViewer html={new TextDecoder("utf-8").decode(bytes)} title={artifact.name} />
@@ -1092,8 +1120,6 @@ function ArtifactPreview({ artifact, bytes }: { artifact: Artifact; bytes: Uint8
       );
     case "pdf":
       return <PdfViewer bytes={bytes} title={artifact.name} />;
-    case "video":
-      return <VideoPreview bytes={bytes} name={artifact.name} />;
     case "image":
       return <ImagePreview bytes={bytes} mimeType={artifact.mimeType} name={artifact.name} />;
     case "none":

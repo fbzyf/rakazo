@@ -10,6 +10,7 @@ import { IconTooltip } from "../../../components/IconTooltip";
 import { InviteDialog } from "../../../components/spaces/InviteDialog";
 import { WindowChrome } from "../../../components/WindowChrome";
 import { desktopBridge, windowChromeKind } from "../../../lib/platform/desktop";
+import { isWeComWebView } from "../../../lib/wecom-webview";
 
 const MeetingsDialog = lazy(() => import("../meetings/meetings-dialog"));
 
@@ -59,7 +60,7 @@ export function ChatHeader({
           data-navigation-trigger=""
           aria-label={t`Open navigation`}
           onClick={onOpenNavigation}
-          className="app-no-drag md:hidden"
+          className={`app-no-drag md:hidden ${isWeComWebView() ? "size-11" : ""}`}
         >
           <Menu strokeWidth={1.75} className="size-4.5" />
         </Button>

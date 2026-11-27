@@ -53,6 +53,11 @@ import { ComposerReplyPreview } from "../chat/chat-context";
 import type { PendingAttachment } from "../chat/chat-shared";
 import { previewMessageText } from "../chat/chat-shared";
 import { isApplePlatform, isEditableTarget, primaryModifier } from "../shell-shortcuts";
+import {
+  isWeComWebView,
+  WECOM_ATTACHMENT_ACCEPT,
+  WECOM_FILE_INPUT_CLASS,
+} from "../../../lib/wecom-webview";
 import { ComposerError } from "./composer-error";
 import { ComposerChip, ComposerMentionHighlights } from "./composer-mentions";
 import {
@@ -738,8 +743,8 @@ const ComposerBody = memo(function Composer({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={ATTACHMENT_ACCEPT}
-          className="hidden"
+          accept={isWeComWebView() ? WECOM_ATTACHMENT_ACCEPT : ATTACHMENT_ACCEPT}
+          className={isWeComWebView() ? WECOM_FILE_INPUT_CLASS : "hidden"}
           onChange={(event) => pickAttachments(event.target.files)}
         />
         <Button
@@ -751,7 +756,7 @@ const ComposerBody = memo(function Composer({
           onClick={() => fileInputRef.current?.click()}
           className={`col-start-1 shrink-0 rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
             expanded ? "row-start-2" : ""
-          }`}
+          } ${isWeComWebView() ? "size-11" : ""}`}
         >
           <Plus size={16} strokeWidth={2} />
         </Button>

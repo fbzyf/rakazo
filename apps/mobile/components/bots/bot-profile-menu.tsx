@@ -15,6 +15,8 @@ import { iosAtLeast } from "../../lib/native/native-controls";
 import { useConfirmationGuard } from "../../lib/native/use-confirmation-guard";
 import { useLeaveDeletedChat } from "../../lib/thread/use-leave-deleted-chat";
 import { NativeSymbol } from "../native/native-symbol";
+import type { PublishedBotTemplateAudience } from "@rakazo/contracts";
+import { rpc } from "../../lib/api/api";
 
 export type BotProfileAction = {
   id: string;
@@ -33,7 +35,28 @@ export function useBotProfileActions(botId: string, name: string): BotProfileAct
     router.dismissAll();
     router.replace("/");
   }
+  function shareAsTemplate(audience: PublishedBotTemplateAudience) {
+    void rpc("botTemplates/publish", { botId, audience }).catch((error) =>
+      Alert.alert(t`Could not share template`, errorText(error, t`Try again.`)),
+    );
+  }
+  function chooseTemplateAudience() {
+    Alert.alert(
+      t`Share as template`,
+      `${t`People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data.`}\n\n${t`They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you.`}`,
+      [
+        { text: t`Cancel`, style: "cancel" },
+        { text: t`Everyone who can log in`, onPress: () => shareAsTemplate("signed_in") },
+        { text: t`This workspace`, onPress: () => shareAsTemplate("space") },
+      ],
+    );
+  }
   return [
+    {
+      id: "share-template",
+      text: t`Share as template`,
+      onPress: chooseTemplateAudience,
+    },
     {
       id: "clear",
       text: t`Clear conversation`,

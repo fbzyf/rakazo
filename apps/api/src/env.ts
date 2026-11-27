@@ -23,8 +23,8 @@ import {
   webOriginFromEnv,
   workspaceSaveLimits,
 } from "@rakazo/adapters";
-import type { OidcConfig, SocialAuthConfig } from "@rakazo/auth";
-import { oidcAuthorizationParams, socialAuthFromFields } from "@rakazo/auth";
+import type { OidcConfig, SocialAuthConfig, WecomConfig } from "@rakazo/auth";
+import { oidcAuthorizationParams, socialAuthFromFields, wecomConfigFromEnv } from "@rakazo/auth";
 import type { LabFeature, MinimumClientBuilds, NavLink } from "@rakazo/contracts";
 import { isPrivateNetworkHost, parseMinimumClientBuilds, parseNavLinks } from "@rakazo/contracts";
 import { parseCrispWebsiteId } from "@rakazo/contracts/content-security-policy";
@@ -62,6 +62,7 @@ export interface AppEnv extends MessagingEnvironmentValues {
   social?: SocialAuthConfig;
   /** Bearer token the identity provider presents to provision accounts over SCIM. */
   scimBearerToken?: string;
+  wecom?: WecomConfig;
   nodeEnv: string;
   desktopStackToken?: string;
   databaseUrl: string;
@@ -268,6 +269,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   const scimBearerToken = optional(source.SCIM_BEARER_TOKEN);
   if (scimBearerToken && (scimBearerToken.length < 32 || /\s/.test(scimBearerToken)))
     throw new Error("SCIM_BEARER_TOKEN must be at least 32 characters with no spaces");
+  const wecom = wecomConfigFromEnv(source);
   const authSecret = resolveAuthSecret(source);
   const webOrigin = webOriginFromEnv(source);
   const sandboxProvider = resolveSandboxProvider(source);
@@ -280,6 +282,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     oidc,
     social,
     scimBearerToken,
+    wecom,
     nodeEnv: source.NODE_ENV ?? "",
     databaseUrl: required(source, "DATABASE_URL"),
     realtimeDatabaseUrl: source.REALTIME_DATABASE_URL ?? required(source, "DATABASE_URL"),

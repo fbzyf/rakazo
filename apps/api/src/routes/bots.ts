@@ -52,11 +52,13 @@ import type { Prisma } from "@rakazo/db";
 import {
   botProfileLabelsChanged,
   commitBotUpdate,
+  ComputerLimitError,
   IsolationError,
   isRecordNotFound,
   recordSecurityEvent,
   restoreBotUnderComputerQuota,
   settingsTarget,
+  SpaceDeletionInProgressError,
   THREAD_LOCK_TRANSACTION_OPTIONS,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -84,6 +86,17 @@ import { purgeClearedThreadMemory } from "../threads/thread-memory.js";
 import { loadMessagePage } from "../threads/thread-message-pages.js";
 import type { RouterContext } from "./context.js";
 import { computerContext, modelSetup, THREAD_MESSAGE_PAGE_SIZE } from "./shared.js";
+
+/** Surface a Space deletion race as a retryable conflict instead of a generic failure. */
+export function mapSpaceLifecycleError(error: unknown): unknown {
+  if (error instanceof SpaceDeletionInProgressError) {
+    return new ORPCError("CONFLICT", { message: error.message });
+  }
+  if (error instanceof ComputerLimitError) {
+    return new ORPCError("BAD_REQUEST", { message: error.message });
+  }
+  return error;
+}
 
 function vaultScope(actor: Actor, vault?: SettingsScope) {
   return { userId: actor.userId, spaceId: actor.spaceId, vault };

@@ -68,6 +68,8 @@ import {
 import { socialCallbackProtection } from "./social-callback-protection.js";
 import type { TokenKey } from "./token-storage.js";
 import { encryptStoredOAuthTokens, openIdToken, sealIdToken } from "./token-storage.js";
+import type { WecomConfig } from "./wecom.js";
+import { wecomAuth } from "./wecom.js";
 
 export { agentImportEmail } from "./agent-import-email.js";
 export type { DirectoryAccountChange } from "./directory.js";
@@ -98,6 +100,14 @@ export {
 export { referralEmail } from "./referral-email.js";
 export type { SocialAuthConfig } from "./social.js";
 export { publicSignInProviders, socialAuthFromFields } from "./social.js";
+export type { WecomConfig } from "./wecom.js";
+export {
+  exchangeWecomAuthorizationCode,
+  rewriteWecomCallbackRequest,
+  WECOM_DEFAULT_AGENT_ID,
+  wecomAuthorizeUrl,
+  wecomConfigFromEnv,
+} from "./wecom.js";
 export { welcomeEmail } from "./welcome-email.js";
 
 export interface AuthEnv {
@@ -109,6 +119,7 @@ export interface AuthEnv {
   oidc?: OidcConfig;
   /** Google and Apple, each present only when its credentials are set. */
   social?: SocialAuthConfig;
+  wecom?: WecomConfig;
   secret: string;
   baseURL: string;
   webOrigin: string;
@@ -492,6 +503,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         env.passwordAuth !== false,
       ),
       identityConfirmation(env.email, emailLocaleOf),
+      wecomAuth(prisma, env),
       ...(discovery ? [discovery.plugin] : []),
       ...(emailCodeSignIn
         ? [

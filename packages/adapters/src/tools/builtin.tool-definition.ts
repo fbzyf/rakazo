@@ -7,6 +7,7 @@ import { conversationTools } from "./builtin-conversation.tool-definition.js";
 import { fleetTools } from "./builtin-fleet.tool-definition.js";
 import { memoryTools } from "./builtin-memory.tool-definition.js";
 import { serviceTools } from "./builtin-services.tool-definition.js";
+import { designCrmVisitGetTool, designCrmVisitSearchTool } from "../design-crm-tools.js";
 import { workTools } from "./builtin-work.tool-definition.js";
 
 export const DELEGATION_TOOL_NAMES = new Set<string>([
@@ -25,6 +26,8 @@ export const builtinAgentTools: ConnectorTool[] = [
   ...serviceTools,
   ...memoryTools,
   ...workTools,
+  designCrmVisitSearchTool,
+  designCrmVisitGetTool,
   ...personalCalendarTools,
   ...fleetTools,
 ];

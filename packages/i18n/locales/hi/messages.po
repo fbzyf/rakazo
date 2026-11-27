@@ -13235,3 +13235,56 @@ msgstr "ज़ीरो डेटा रिटेंशन"
 #: apps/web/src/components/vault/VaultItemEditor.tsx
 msgid "ZIP or postal code"
 msgstr "ZIP या पिन कोड"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "टेम्पलेट साझा नहीं हो सका"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "टेम्पलेट उपयोग नहीं हो सका"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "जो भी लॉग इन कर सकता है"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "अभी कोई टेम्पलेट नहीं"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "जिसे यह टेम्पलेट देखने की अनुमति है, वह इसका नाम, विवरण और निर्देश पढ़ सकता है। पासवर्ड, रहस्य या ग्राहक डेटा न डालें।"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "टेम्पलेट हटाएँ"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "टेम्पलेट के रूप में साझा करें"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "उन्हें अपनी प्रति मिलती है। शेड्यूल रुके हुए शुरू होते हैं। चैट, मेमोरी और सहेजे गए साइन-इन आपके पास रहते हैं।"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "यह कार्यक्षेत्र"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "इसे कौन इस्तेमाल कर सकता है"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr "企微登录"
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr "拒绝授权"
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr "未绑定"

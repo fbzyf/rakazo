@@ -9,6 +9,7 @@ import type { createSpaceRpc, RpcClient } from "../../lib/query/rpc";
 import { selectSpace } from "../../lib/query/rpc";
 import type { CreateBotDialogInput } from "./bots/create-bot-dialog";
 import { CreateBotDialog } from "./bots/create-bot-dialog";
+import { BotTemplatesDialog, ShareTemplateDialog } from "./bot-templates-dialog";
 import type { CommandPaletteAction } from "./command-palette";
 import { CommandPalette } from "./command-palette";
 import {
@@ -34,6 +35,8 @@ export function useShellDialogs() {
   const [deleteSectionTarget, setDeleteSectionTarget] = useState<SectionTarget | null>(null);
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [createBotOpen, setCreateBotOpen] = useState(false);
+  const [botTemplatesOpen, setBotTemplatesOpen] = useState(false);
+  const [shareTemplateBot, setShareTemplateBot] = useState<Bot | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   return {
     deleteTarget,
@@ -52,6 +55,10 @@ export function useShellDialogs() {
     setNewSpaceOpen,
     createBotOpen,
     setCreateBotOpen,
+    botTemplatesOpen,
+    setBotTemplatesOpen,
+    shareTemplateBot,
+    setShareTemplateBot,
     commandPaletteOpen,
     setCommandPaletteOpen,
   };
@@ -114,6 +121,10 @@ export function ShellDialogs({
     setNewSpaceOpen,
     createBotOpen,
     setCreateBotOpen,
+    botTemplatesOpen,
+    setBotTemplatesOpen,
+    shareTemplateBot,
+    setShareTemplateBot,
     commandPaletteOpen,
     setCommandPaletteOpen,
   } = dialogs;
@@ -236,6 +247,30 @@ export function ShellDialogs({
           avatarSet={botAvatarSet}
           onCancel={() => setCreateBotOpen(false)}
           onCreate={createBot}
+        />
+      ) : null}
+
+      {botTemplatesOpen ? (
+        <BotTemplatesDialog
+          rpc={rpc}
+          onCancel={() => setBotTemplatesOpen(false)}
+          onUse={async (templateId) => {
+            const bot = await rpc.botTemplates.use({ templateId });
+            setBotTemplatesOpen(false);
+            closeMobileSidebar();
+            navigate(`/app/${bot.id}`);
+            await refreshBots();
+          }}
+        />
+      ) : null}
+
+      {shareTemplateBot ? (
+        <ShareTemplateDialog
+          onCancel={() => setShareTemplateBot(null)}
+          onConfirm={async (audience) => {
+            await rpc.botTemplates.publish({ botId: shareTemplateBot.id, audience });
+            setShareTemplateBot(null);
+          }}
         />
       ) : null}
 

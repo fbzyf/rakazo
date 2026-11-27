@@ -30,6 +30,7 @@ export function SidebarHeader({
   setNewSpaceOpen,
   openAgentImport,
   setCreateBotOpen,
+  setBotTemplatesOpen,
 }: {
   mini?: boolean;
   createMenuOpen: boolean;
@@ -46,6 +47,7 @@ export function SidebarHeader({
   setNewSpaceOpen: (open: boolean) => void;
   openAgentImport: () => void;
   setCreateBotOpen: (open: boolean) => void;
+  setBotTemplatesOpen: (open: boolean) => void;
 }) {
   const { t } = useLingui();
   const hasWindowChrome = Boolean(desktopBridge());
@@ -156,6 +158,11 @@ export function SidebarHeader({
                   setCreateMenuOpen(false);
                   setMobileSidebarOpen(false);
                   openAgentImport();
+                }}
+                onOpenTemplates={() => {
+                  setCreateMenuOpen(false);
+                  setMobileSidebarOpen(false);
+                  setBotTemplatesOpen(true);
                 }}
                 onOpenBot={(id) => {
                   setCreateMenuOpen(false);

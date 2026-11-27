@@ -13235,3 +13235,56 @@ msgstr "Geen gegevensbewaring"
 #: apps/web/src/components/vault/VaultItemEditor.tsx
 msgid "ZIP or postal code"
 msgstr "Postcode"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Sjabloon delen mislukt"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Sjabloon gebruiken mislukt"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Iedereen die kan inloggen"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Nog geen sjablonen"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Wie dit sjabloon mag zien, kan de naam, beschrijving en instructies lezen. Zet er geen wachtwoorden, geheimen of klantgegevens in."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Sjabloon verwijderen"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Delen als sjabloon"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "De ander krijgt een eigen kopie. Schema's starten gepauzeerd. Chats, geheugen en opgeslagen aanmeldingen blijven bij jou."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Deze werkruimte"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Wie kan het gebruiken"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr "企微登录"
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr "拒绝授权"
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr "未绑定"

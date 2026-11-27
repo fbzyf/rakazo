@@ -71,7 +71,12 @@ import {
   verifyModelServesAgents,
   withHostComputerScreen,
 } from "@rakazo/adapters";
-import { createAuth, emailCopyAvailable, isBlockedAuthPath } from "@rakazo/auth";
+import {
+  createAuth,
+  emailCopyAvailable,
+  isBlockedAuthPath,
+  rewriteWecomCallbackRequest,
+} from "@rakazo/auth";
 import type { ModelCredential } from "@rakazo/contracts";
 import {
   isLocalhostOrLoopbackIp,
@@ -86,6 +91,7 @@ import {
   createDb,
   createPool,
   parsePositiveInteger,
+  requireMembership,
   runAsSystem,
 } from "@rakazo/db";
 import type { Logger } from "@rakazo/logging";
@@ -111,7 +117,7 @@ import {
   withAuthLibraryFailures,
 } from "./auth/auth-library-failures.js";
 import { scimDirectory } from "./auth/directory-route.js";
-import { requestSessions } from "./auth/request-session.js";
+import { actorFromMembership, requestSessions } from "./auth/request-session.js";
 import { createAuthResponseAudit } from "./auth/security-audit.js";
 import { accountLifecycleHooks } from "./auth/session-hooks.js";
 import { isTrustedOrigin, mobileAuthOrigins } from "./auth/trusted-origins.js";
@@ -133,6 +139,7 @@ import { sendReferralEmails } from "./email/referral-email.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv, withEnvOverrides } from "./env.js";
 import { mountAppAssociation } from "./http/app-association.js";
+import { mountArtifactDownloadRoute } from "./artifact-download.js";
 import {
   clientIpMiddleware,
   createClientIpResolver,
@@ -476,6 +483,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     breachedPasswordCheck: env.breachedPasswordCheck,
     oidc: env.oidc,
     social: env.social,
+    wecom: env.wecom,
     secret: env.authSecret,
     baseURL: env.authUrl,
     webOrigin: env.webOrigin,
@@ -824,6 +832,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
         departure,
       ),
   });
+  app.get("/api/auth/callback/wecom", (c) =>
+    auth.handler(emptyAuthBodyAsJson(rewriteWecomCallbackRequest(c.req.raw))),
+  );
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
     if (isBlockedAuthPath(path)) {
@@ -868,6 +879,23 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   mountRpcRoute(app, router, requestSession, env);
   mountAccountExportRoute(app, { prisma, auth, artifacts, home });
   mountAuditExportRoute(app, { prisma, sessionActor });
+  mountArtifactDownloadRoute(app, {
+    prisma,
+    artifacts,
+    actorFor: async (request, spaceId) => {
+      const session = await auth.api.getSession({ headers: request.headers });
+      const user = session?.user;
+      if (!user?.email) return null;
+      return actorFromMembership(
+        requireMembership(
+          prisma,
+          { id: user.id, email: user.email },
+          spaceId,
+          session.session,
+        ),
+      );
+    },
+  });
   mountVoiceHttpRoutes(app, { prisma, secrets, env }, (c) => sessionActor(c.req.raw));
   mountAccountImportRoute(
     app,

@@ -78,6 +78,7 @@ export function ShellSidebar({
   openAgentImport,
   setCreateBotOpen,
   chatMenu,
+  setBotTemplatesOpen,
   roster,
   archived,
   footerLogos,
@@ -109,6 +110,7 @@ export function ShellSidebar({
   openAgentImport: () => void;
   setCreateBotOpen: (open: boolean) => void;
   chatMenu: ChatMenuState;
+  setBotTemplatesOpen: (open: boolean) => void;
   roster: ReactNode;
   archived: ReactNode;
   footerLogos: Array<{ name: string; logo?: string | null }>;
@@ -196,6 +198,7 @@ export function ShellSidebar({
           setNewSpaceOpen={setNewSpaceOpen}
           openAgentImport={openAgentImport}
           setCreateBotOpen={setCreateBotOpen}
+          setBotTemplatesOpen={setBotTemplatesOpen}
         />
         {mini ||
         !(

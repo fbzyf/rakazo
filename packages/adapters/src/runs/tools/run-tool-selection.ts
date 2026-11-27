@@ -13,6 +13,7 @@ import { selectCloudAgentTools } from "../../cloud-agents/cloud-agent-tools-sele
 import { READ_MEETING_TRANSCRIPT } from "../../meetings/meeting-chat.tool-definition.js";
 import { selectMemoryTools } from "../../memory/memory-tools.js";
 import { filterImageReturningComputerTools } from "../../models/model-vision.js";
+import { isDesignCrmVisitToolName } from "../../design-crm-tools.js";
 import { builtinAgentTools } from "../../tools/builtin.tool-definition.js";
 import { searchHistoryThisChat } from "../../tools/builtin-memory.tool-definition.js";
 import {
@@ -160,6 +161,8 @@ export function selectBuiltinToolsForRun(options: {
   mediaVideoEnabled?: boolean;
   /** The deployment configured paid data services. */
   paidServicesEnabled?: boolean;
+  /** Offer Design CRM visit tools only on 客服助手. */
+  designCrmVisitEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -240,6 +243,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.hasGroups === true || tool.name !== "post_to_group") &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
+      (options.designCrmVisitEnabled || !isDesignCrmVisitToolName(tool.name)) &&
       (!isBackgroundRunTrigger(options.trigger) || !BACKGROUND_DROPPED_TOOL_NAMES.has(tool.name)) &&
       (options.voiceCall || tool.name !== "end_call") &&
       (emailMailbox || !EMAIL_INBOX_TOOL_NAMES.has(tool.name)) &&

@@ -13235,3 +13235,56 @@ msgstr "Keine Datenspeicherung"
 #: apps/web/src/components/vault/VaultItemEditor.tsx
 msgid "ZIP or postal code"
 msgstr "Postleitzahl"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Vorlage konnte nicht geteilt werden"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Vorlage konnte nicht verwendet werden"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Alle, die sich anmelden können"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Noch keine Vorlagen"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Wer diese Vorlage sehen darf, kann ihren Namen, die Beschreibung und die Anweisungen lesen. Keine Passwörter, Geheimnisse oder Kundendaten hineinschreiben."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Vorlage entfernen"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Als Vorlage teilen"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "Die andere Person erhält eine eigene Kopie. Zeitpläne starten pausiert. Chats, Gedächtnis und gespeicherte Anmeldungen bleiben bei dir."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Dieser Arbeitsbereich"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Wer kann es verwenden"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr "企微登录"
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr "拒绝授权"
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr "未绑定"

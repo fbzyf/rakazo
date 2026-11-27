@@ -16,6 +16,8 @@ vi.mock("../../lib/pages/artifact-open", () => ({
   fetchArtifactBytes: mocks.fetch,
   downloadArtifact: mocks.download,
   downloadArtifactBytes: vi.fn(),
+  artifactContentUrl: (id: string, options?: { download?: boolean }) =>
+    `/api/artifacts/${id}${options?.download ? "?download=1" : ""}`,
 }));
 vi.mock("@lingui/react/macro", () => {
   const t = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -67,7 +69,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 it.each(["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4"])(
-  "renders %s controls, keeps download, and revokes playback URL",
+  "plays %s from the binary route without fetching the whole file first",
   async (mimeType) => {
     await act(async () =>
       root?.render(
@@ -81,59 +83,19 @@ it.each(["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4"])(
       ),
     );
     expect(mocks.fetch).not.toHaveBeenCalled();
-    expect(container.querySelector("audio")).toBeNull();
-    await act(async () =>
-      container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')?.click(),
-    );
     const audio = container.querySelector("audio");
     expect(audio?.hasAttribute("controls")).toBe(true);
     expect(audio?.getAttribute("preload")).toBe("metadata");
     expect(audio?.getAttribute("aria-label")).toBe("clip");
-    expect(audio?.getAttribute("src")).toBe("blob:audio-preview");
-    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
-    expect(mocks.create.mock.calls[0]?.[0].type).toBe(mimeType);
-    expect(mocks.fetch).toHaveBeenCalledWith({ botId: "bot-1" }, "audio-1");
+    expect(audio?.getAttribute("src")).toBe("/api/artifacts/audio-1");
     const download = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Download clip"]',
     );
     expect(download).not.toBeNull();
     await act(async () => download?.click());
     expect(mocks.download).toHaveBeenCalledWith({ botId: "bot-1" }, "audio-1", "clip", mimeType);
-    await act(async () => root?.unmount());
-    root = undefined;
-    expect(mocks.revoke).toHaveBeenCalledExactlyOnceWith("blob:audio-preview");
   },
 );
-it("retains the download control when playback bytes fail to load", async () => {
-  mocks.fetch.mockRejectedValueOnce(new Error("unavailable"));
-  await act(async () =>
-    root?.render(
-      <ArtifactFileCard
-        target={{ groupId: "group-1" }}
-        artifactId="audio-1"
-        name="clip"
-        mimeType="audio/mpeg"
-        size={3}
-      />,
-    ),
-  );
-  await act(async () =>
-    container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')?.click(),
-  );
-  expect(container.querySelector("audio")).toBeNull();
-  expect(container.querySelector('[role="alert"]')).not.toBeNull();
-  expect(container.querySelector('button[aria-label="Download clip"]')).not.toBeNull();
-  expect(mocks.create).not.toHaveBeenCalled();
-  await act(async () =>
-    container.querySelector<HTMLButtonElement>('button[aria-label="Download clip"]')?.click(),
-  );
-  expect(mocks.download).toHaveBeenCalledWith(
-    { groupId: "group-1" },
-    "audio-1",
-    "clip",
-    "audio/mpeg",
-  );
-});
 
 function renderClip(artifactId = "audio-1") {
   root?.render(
@@ -147,62 +109,60 @@ function renderClip(artifactId = "audio-1") {
   );
 }
 
-it("downloads independently before playback", async () => {
+it("streams video preview from the binary route without prefetching bytes", async () => {
+  await act(async () =>
+    root?.render(
+      <ArtifactFileCard
+        target={{ botId: "bot-1" }}
+        artifactId="video-1"
+        name="clip.mp4"
+        mimeType="video/mp4"
+        size={4_000_000}
+      />,
+    ),
+  );
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('button[aria-label="Preview clip.mp4"]')?.click(),
+  );
+  expect(mocks.fetch).not.toHaveBeenCalled();
+  const video = document.body.querySelector("video");
+  expect(video?.getAttribute("src")).toBe("/api/artifacts/video-1");
+  expect(video?.hasAttribute("playsInline")).toBe(true);
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('button[aria-label="Download clip.mp4"]')?.click(),
+  );
+  expect(mocks.download).toHaveBeenCalledWith(
+    { botId: "bot-1" },
+    "video-1",
+    "clip.mp4",
+    "video/mp4",
+  );
+});
+
+it("downloads without prefetching audio bytes", async () => {
   await act(async () => renderClip());
   await act(async () =>
     container.querySelector<HTMLButtonElement>('button[aria-label="Download clip"]')?.click(),
   );
   expect(mocks.download).toHaveBeenCalledTimes(1);
   expect(mocks.fetch).not.toHaveBeenCalled();
-  expect(container.querySelector("audio")).toBeNull();
 });
 
-it.each(["unmount", "change"])(
-  "ignores pending bytes after %s and suppresses duplicate play",
-  async (cleanup) => {
-    const bytes = deferred<Uint8Array>();
-    mocks.fetch.mockReturnValueOnce(bytes.promise);
-    await act(async () => renderClip());
-    const play = container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')!;
-    await act(async () => {
-      play.click();
-      play.click();
-    });
-    expect(mocks.fetch).toHaveBeenCalledExactlyOnceWith({ groupId: "group-1" }, "audio-1");
-    expect(container.querySelector('[role="status"]')).not.toBeNull();
-    await act(async () => {
-      if (cleanup === "change") renderClip("audio-2");
-      else {
-        root?.unmount();
-        root = undefined;
-      }
-    });
-    await act(async () => bytes.resolve(new Uint8Array([1])));
-    expect(mocks.create).not.toHaveBeenCalled();
-    expect(container.querySelector("audio")).toBeNull();
-  },
-);
+it("plays the next clip from its own address when the artifact changes", async () => {
+  await act(async () => renderClip());
+  expect(mocks.fetch).not.toHaveBeenCalled();
+  expect(container.querySelector("audio")?.getAttribute("src")).toBe("/api/artifacts/audio-1");
+  await act(async () => renderClip("audio-2"));
+  expect(container.querySelector("audio")?.getAttribute("src")).toBe("/api/artifacts/audio-2");
+  expect(mocks.fetch).not.toHaveBeenCalled();
+});
 
 it("stops playback and revokes the old URL on artifact change", async () => {
   await act(async () => renderClip());
-  await act(async () =>
-    container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')?.click(),
-  );
+  expect(container.querySelector("audio")?.getAttribute("src")).toBe("/api/artifacts/audio-1");
   await act(async () => renderClip("audio-2"));
-  expect(mocks.revoke).toHaveBeenCalledExactlyOnceWith("blob:audio-preview");
-  expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
-  expect(container.querySelector("audio")).toBeNull();
-  expect(mocks.fetch).toHaveBeenCalledTimes(1);
-});
-
-it("keeps controls when automatic playback is rejected", async () => {
-  vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new Error("blocked"));
-  await act(async () => renderClip());
-  await act(async () =>
-    container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')?.click(),
-  );
-  expect(container.querySelector("audio")?.hasAttribute("controls")).toBe(true);
-  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelector("audio")?.getAttribute("src")).toBe("/api/artifacts/audio-2");
+  expect(mocks.fetch).not.toHaveBeenCalled();
 });
 
 it("translates every size unit and rolls up instead of 1,024.0 KB or 1,536.0 MB", async () => {
@@ -280,65 +240,6 @@ it("previews plain text in the app instead of only offering a download", async (
       "1. Confirm the pricing page copy.",
     ),
   );
-});
-
-it("retries failed audio loads in place without duplicate requests", async () => {
-  const bytes = deferred<Uint8Array>();
-  mocks.fetch
-    .mockRejectedValueOnce(new Error("offline"))
-    .mockRejectedValueOnce(new Error("still offline"))
-    .mockImplementationOnce(() => bytes.promise);
-  await act(async () => renderClip());
-  const play = () => container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')!;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await act(async () => play().click());
-    expect(container.querySelector('[role="alert"]')).not.toBeNull();
-    expect(play()).not.toBeNull();
-    expect(play().disabled).toBe(false);
-  }
-  await act(async () => {
-    play().click();
-    play().click();
-  });
-  expect(mocks.fetch).toHaveBeenCalledTimes(3);
-  expect(play().disabled).toBe(true);
-  expect(container.querySelector('[role="alert"]')).toBeNull();
-  await act(async () => bytes.resolve(new Uint8Array([1, 2, 3])));
-  expect(container.querySelector("audio")?.getAttribute("src")).toBe("blob:audio-preview");
-  expect(play()).toBeNull();
-  expect(mocks.create).toHaveBeenCalledTimes(1);
-  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
-});
-
-it.each(["unmount", "change"])("ignores a rejected retry after %s", async (cleanup) => {
-  const late = deferred<Uint8Array>();
-  mocks.fetch
-    .mockRejectedValueOnce(new Error("offline"))
-    .mockImplementationOnce(() => late.promise);
-  await act(async () => renderClip());
-  await act(async () =>
-    container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')!.click(),
-  );
-  const retry = container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]');
-  expect(retry).not.toBeNull();
-  await act(async () => retry!.click());
-  await act(async () => {
-    if (cleanup === "change") renderClip("audio-2");
-    else {
-      root?.unmount();
-      root = undefined;
-    }
-  });
-  await act(async () => late.reject(new Error("late failure")));
-  expect(container.querySelector('[role="alert"]')).toBeNull();
-  expect(mocks.create).not.toHaveBeenCalled();
-  if (cleanup === "change") {
-    await act(async () =>
-      container.querySelector<HTMLButtonElement>('button[aria-label="Play clip"]')!.click(),
-    );
-    expect(mocks.fetch).toHaveBeenLastCalledWith({ groupId: "group-1" }, "audio-2");
-    expect(container.querySelector("audio")).not.toBeNull();
-  }
 });
 
 async function openFilePreview(mimeType = "text/markdown") {

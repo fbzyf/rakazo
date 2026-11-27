@@ -13235,3 +13235,56 @@ msgstr "Retenção zero de dados"
 #: apps/web/src/components/vault/VaultItemEditor.tsx
 msgid "ZIP or postal code"
 msgstr "CEP ou código postal"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not share template"
+msgstr "Não foi possível compartilhar o modelo"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Could not use template"
+msgstr "Não foi possível usar o modelo"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Everyone who can log in"
+msgstr "Quem puder entrar"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "No templates yet"
+msgstr "Ainda não há modelos"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "People allowed to see this template can read its name, description, and instructions. Do not include passwords, secrets, or customer data."
+msgstr "Quem puder ver este modelo pode ler o nome, a descrição e as instruções. Não inclua senhas, segredos nem dados de clientes."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Remove template"
+msgstr "Remover modelo"
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Share as template"
+msgstr "Compartilhar como modelo"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "They get their own copy. Schedules start paused. Chats, memory, and saved sign-ins stay with you."
+msgstr "A outra pessoa recebe a própria cópia. Os horários começam pausados. Conversas, memória e logins salvos ficam com você."
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "This workspace"
+msgstr "Este espaço de trabalho"
+
+#: src/pages/shell/bot-templates-dialog.tsx
+msgid "Who can use it"
+msgstr "Quem pode usar"
+
+#: src/pages/Auth.tsx
+msgid "企微登录"
+msgstr "企微登录"
+
+#: src/lib/user-error.ts
+msgid "拒绝授权"
+msgstr "拒绝授权"
+
+#: src/lib/user-error.ts
+msgid "未绑定"
+msgstr "未绑定"

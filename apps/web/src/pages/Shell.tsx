@@ -674,6 +674,7 @@ function SpaceShell() {
         setNewSpaceOpen={dialogs.setNewSpaceOpen}
         setCreateBotOpen={dialogs.setCreateBotOpen}
         chatMenu={chatMenu}
+        setBotTemplatesOpen={dialogs.setBotTemplatesOpen}
         roster={
           <SidebarRoster
             mini={sidebar.mini}

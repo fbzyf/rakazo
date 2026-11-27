@@ -36,11 +36,18 @@ it.skipIf(!testDatabase)(
       await run("pnpm", ["--filter", "@rakazo/api", "db:migrate"], {
         env: { ...env, DATABASE_MIGRATION_URL: at(ownerDatabase) },
       });
-      const boot = (password: string) =>
+      const boot = (password: string, extra: Record<string, string> = {}) =>
         run("pnpm", ["--filter", "@rakazo/api", "exec", "tsx", "src/cli/bootstrap-owner.ts"], {
-          env: { ...env, DATABASE_MIGRATION_URL: undefined, OWNER_PASSWORD: password },
+          env: {
+            ...env,
+            DATABASE_MIGRATION_URL: undefined,
+            OWNER_PASSWORD: password,
+            ...extra,
+          },
         });
-      await boot(env.OWNER_PASSWORD);
+      const first = await boot(env.OWNER_PASSWORD);
+      expect(first.stdout).toContain("status\temail\tpassword");
+      expect(first.stdout).toContain(`created\t${env.OWNER_EMAIL}\t${env.OWNER_PASSWORD}`);
       const owner = await prisma.user.findUniqueOrThrow({ where: { email: env.OWNER_EMAIL } });
       expect(
         await prisma.deploymentSettings.findUnique({ where: { id: "default" } }),
@@ -97,6 +104,14 @@ it.skipIf(!testDatabase)(
         ).status,
       ).toBe(400);
       expect(await prisma.user.count()).toBe(1);
+      const rotated = "rotated-bootstrap-password";
+      await boot(rotated, { OWNER_RESET_PASSWORD: "1" });
+      expect((await request("sign-in", { email: env.OWNER_EMAIL, password: rotated })).status).toBe(
+        200,
+      );
+      expect(
+        (await request("sign-in", { email: env.OWNER_EMAIL, password: env.OWNER_PASSWORD })).status,
+      ).toBe(401);
     } finally {
       await prisma.$disconnect();
       await pool.end();

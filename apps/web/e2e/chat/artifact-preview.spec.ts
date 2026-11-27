@@ -41,7 +41,7 @@ test("agent-attached files appear as cards with previews and downloads", async (
   const previewReady = new Promise<void>((resolve) => {
     releasePreview = resolve;
   });
-  await page.route("**/rpc/artifacts/get", async (route) => {
+  await page.route("**/api/artifacts/**", async (route) => {
     await previewReady;
     await route.continue();
   });
